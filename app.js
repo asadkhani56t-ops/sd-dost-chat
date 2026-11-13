@@ -110,37 +110,3 @@ function startChat(name){
   currentChat=name||"Friend"; $("chatRoomTitle").textContent=currentChat; $("chatRoomName").textContent=currentChat; openPage("chatroom");
 }
 function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-$("messageForm").addEventListener("submit",e=>{
-  e.preventDefault(); const input=$("messageInput"), value=input.value.trim(); if(!value)return;
-  const bubble=document.createElement("div"); bubble.className="bubble sent"; bubble.textContent=value;
-  $("messageArea").appendChild(bubble); input.value=""; $("messageArea").scrollTop=$("messageArea").scrollHeight;
-});
-$("groupForm").addEventListener("submit",e=>{
-  e.preventDefault(); const name=$("groupName").value.trim(); if(!name){$("groupFeedback").textContent="Enter a group name.";return;}
-  groups.push(name); $("groupName").value=""; $("groupFeedback").textContent="Group created in this design preview."; renderGroups(); toast("Group created.");
-});
-$("chatSearch").addEventListener("input",e=>{
-  const q=e.target.value.toLowerCase();
-  document.querySelectorAll("#chatList [data-chat]").forEach(el=>el.style.display=el.textContent.toLowerCase().includes(q)?"flex":"none");
-});
-$("mediaPicker").addEventListener("change",e=>{
-  const file=e.target.files[0], preview=$("mediaPreview"); preview.innerHTML="";
-  if(!file)return;
-  const url=URL.createObjectURL(file), el=document.createElement(file.type.startsWith("video/")?"video":"img");
-  el.src=url; if(el.tagName==="VIDEO"){el.controls=true;} preview.appendChild(el);
-});
-async function testMedia(kind,statusId){
-  const status=$(statusId);
-  if(!navigator.mediaDevices?.getUserMedia){status.textContent="This browser does not support media permission testing.";return;}
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia(kind==="video"?{audio:true,video:true}:{audio:true});
-    stream.getTracks().forEach(t=>t.stop()); status.textContent="Permission granted on this device. Real calls are not connected yet.";
-  }catch(err){status.textContent="Permission not granted or unavailable. You can allow it in browser settings.";}
-}
-$("voiceCallAction").addEventListener("click",()=>testMedia("audio","voiceCallStatus"));
-$("videoCallAction").addEventListener("click",()=>testMedia("video","videoCallStatus"));
-$("recordButton").addEventListener("click",()=>testMedia("audio","recordStatus"));
-document.querySelectorAll(".switch input").forEach(input=>input.addEventListener("change",()=>toast(input.checked?"Option turned on in preview.":"Option turned off in preview.")));
-
-setAuthMode(false);
-                                           
