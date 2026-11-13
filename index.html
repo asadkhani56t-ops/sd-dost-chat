@@ -1,135 +1,134 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#142d50">
-  <title>SD DOST CHAT</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#142d50">
+<title>SD DOST CHAT</title>
+<style>
+:root{--navy:#142d50;--navy2:#203f68;--bg:#eef1f5;--white:#fff;--line:#dce2ea;--muted:#6b7280;--blue:#315b8b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:#172033}
+button,input{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:12px 15px;background:var(--navy);color:white;font-weight:700}
+button.secondary{background:#e8edf4;color:var(--navy)}button.ghost{background:transparent;color:var(--navy);border:1px solid var(--line)}
+input{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;margin:6px 0 12px;background:white}
+header{background:var(--navy);color:white;padding:17px 18px;display:flex;justify-content:space-between;align-items:center}
+header strong{font-size:18px}header small{opacity:.8}
+main{max-width:760px;margin:auto;padding:16px 14px 95px}
+.panel{background:white;border:1px solid var(--line);border-radius:18px;padding:17px;margin:12px 0;box-shadow:0 3px 12px #142d500b}
+h2{font-size:20px;margin:0 0 14px;color:var(--navy)}h3{font-size:16px;margin:0 0 8px}
+.muted{color:var(--muted);font-size:13px;line-height:1.5}.hidden{display:none!important}
+.row{display:flex;gap:9px;align-items:center}.row>*{min-width:0}.row input{flex:1}
+.auth{max-width:440px;margin:35px auto;padding:22px}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:7px 3px calc(7px + env(safe-area-inset-bottom));z-index:5}
+.tabs button{background:transparent;color:#64748b;border-radius:10px;padding:7px 2px;font-size:11px}
+.tabs button.active{color:var(--navy);background:#edf2f8}
+.tabs span{display:block;font-size:19px;margin-bottom:3px}
+.item{padding:13px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
+.pill{display:inline-block;background:#edf2f8;color:var(--navy);border-radius:20px;padding:5px 9px;font-size:12px}
+.chatbox{height:45vh;overflow:auto;background:#f7f9fc;border-radius:14px;padding:12px;margin:10px 0}
+.bubble{background:#e5edf7;padding:10px 12px;border-radius:14px;margin:7px 0;max-width:85%;width:max-content}
+.notice{background:#fff7e6;border:1px solid #f0dca8;padding:11px;border-radius:12px;color:#73551b;font-size:13px;line-height:1.5}
+.avatar{width:54px;height:54px;border-radius:50%;background:#e6edf6;color:var(--navy);display:grid;place-items:center;font-size:23px;font-weight:bold}
+@media(min-width:650px){main{padding-top:25px}.tabs{max-width:760px;margin:auto;border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0}}
+</style>
 </head>
 <body>
-  <section id="authScreen" class="auth-wrap">
-    <div class="auth-card">
-      <div class="brand-mark">SD</div>
-      <h1>SD DOST CHAT</h1>
-      <p class="sub">Stay connected with your friends</p>
-      <div id="signupFields">
-        <label for="displayName">Your name</label>
-        <input id="displayName" autocomplete="name" placeholder="Enter your name">
-      </div>
-      <label for="email">Email</label>
-      <input id="email" type="email" autocomplete="email" placeholder="Enter your email">
-      <label for="password">Password</label>
-      <input id="password" type="password" autocomplete="current-password" placeholder="Enter password">
-      <button id="authSubmit" class="primary full">Create account</button>
-      <button id="toggleAuth" class="outline full">I already have an account — Log in</button>
-      <button id="forgotPassword" class="link full">Forgot password?</button>
-      <p id="authMessage" class="message" role="status"></p>
-    </div>
-  </section>
+<header><div><strong>SD DOST CHAT</strong><br><small>Stay connected with friends</small></div><span id="headerUser" class="muted" style="color:#fff"></span></header>
 
-  <div id="appShell" class="app-shell hidden">
-    <header class="topbar">
-      <div class="brand"><div class="brand-mark small">SD</div><div><b>SD DOST CHAT</b><small id="welcomeText">Your chat space</small></div></div>
-      <button id="topProfile" class="avatar-btn" aria-label="Open profile">SD</button>
-    </header>
-    <main id="mainContent" class="main-content">
-      <section class="page active" id="page-home">
-        <div class="hero-card"><div><span class="eyebrow">WELCOME</span><h2 id="homeGreeting">Hello!</h2><p>Your friends and conversations, all in one place.</p></div><div class="hero-icon">✦</div></div>
-        <div class="section-heading"><h2>Quick access</h2></div>
-        <div class="quick-grid">
-          <button class="quick-card" data-open="chats"><span>💬</span><b>Chats</b><small>Private messages</small></button>
-          <button class="quick-card" data-open="friends"><span>👥</span><b>Friends</b><small>Your contacts</small></button>
-          <button class="quick-card" data-open="requests"><span>📨</span><b>Requests</b><small>Friend invitations</small></button>
-          <button class="quick-card" data-open="groups"><span>🫂</span><b>Groups</b><small>Group conversations</small></button>
-        </div>
-        <div class="info-card"><b>Getting started</b><p>Open a section using the buttons below. Features that need extra services are clearly marked until connected.</p></div>
-      </section>
+<section id="authScreen" class="panel auth">
+  <h2 id="authTitle">Welcome to SD DOST CHAT</h2>
+  <p class="muted">Create your account or log in to continue.</p>
+  <div id="nameWrap"><label>Your name</label><input id="name" placeholder="Enter your name"></div>
+  <label>Email</label><input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+  <label>Password</label><input id="password" type="password" placeholder="At least 6 characters" autocomplete="current-password">
+  <button id="authBtn" style="width:100%">Create account</button>
+  <button id="switchAuth" class="secondary" style="width:100%;margin-top:9px">I already have an account</button>
+  <button id="forgotBtn" class="ghost" style="width:100%;margin-top:9px">Forgot password?</button>
+  <p id="authMsg" class="muted" aria-live="polite"></p>
+</section>
 
-      <section class="page" id="page-chats">
-        <div class="page-heading"><div><span class="eyebrow">MESSAGES</span><h2>Chats</h2></div><button class="round-action" data-open="friends">＋</button></div>
-        <div class="search-box">⌕ <input id="chatSearch" placeholder="Search chats"></div>
-        <div class="empty-state"><div class="empty-icon">💬</div><h3>No chats yet</h3><p>Add a friend first. Your conversations will appear here once private messaging is connected to the database.</p><button class="primary" data-open="friends">Find friends</button></div>
-      </section>
-
-      <section class="page" id="page-friends">
-        <div class="page-heading"><div><span class="eyebrow">YOUR PEOPLE</span><h2>Friends</h2></div></div>
-        <div class="panel"><h3>Add a friend</h3><p class="muted">Enter the person's Firebase UID. Friend search and sending requests need matching secure database rules.</p><label for="friendUid">Friend UID</label><input id="friendUid" placeholder="Paste friend's UID"><button id="sendFriendRequest" class="primary full">Send friend request</button><p id="friendMessage" class="message"></p></div>
-        <div class="empty-state compact"><div class="empty-icon">👥</div><h3>Your friends list</h3><p>Accepted friends will show here after the secure friend-request workflow is connected.</p></div>
-      </section>
-
-      <section class="page" id="page-requests">
-        <div class="page-heading"><div><span class="eyebrow">CONNECTIONS</span><h2>Friend requests</h2></div></div>
-        <div class="empty-state"><div class="empty-icon">📨</div><h3>No requests displayed</h3><p>Incoming requests will appear here after the database request system is configured.</p></div>
-      </section>
-
-      <section class="page" id="page-groups">
-        <div class="page-heading"><div><span class="eyebrow">TOGETHER</span><h2>Group chats</h2></div></div>
-        <div class="panel"><h3>Create a group</h3><label for="groupName">Group name</label><input id="groupName" placeholder="e.g. School friends"><button id="createGroup" class="primary full">Create group</button><p id="groupMessage" class="message"></p><p class="muted">Group creation and shared messages need authenticated group membership rules in Firebase.</p></div>
-      </section>
-
-      <section class="page" id="page-calls">
-        <div class="page-heading"><div><span class="eyebrow">STAY IN TOUCH</span><h2>Calls</h2></div></div>
-        <div class="call-grid">
-          <div class="panel call-card"><div class="call-icon">☎</div><h3>Voice call</h3><p>Audio calling interface</p><button class="primary full" data-open="voice-call">Open voice call</button></div>
-          <div class="panel call-card"><div class="call-icon">▣</div><h3>Video call</h3><p>Video calling interface</p><button class="primary full" data-open="video-call">Open video call</button></div>
-        </div>
-        <div class="notice">Calls are not live yet. To make real calls work, we must add WebRTC, Firebase Realtime Database signaling, and a STUN/TURN service.</div>
-      </section>
-
-      <section class="page" id="page-voice-call">
-        <div class="page-heading"><button class="back-btn" data-open="calls">← Back</button><h2>Voice call</h2></div>
-        <div class="call-stage"><div class="call-avatar">☎</div><h2>Voice call setup</h2><p>Microphone permission and a secure call connection will be required.</p><span class="status-chip">Not connected</span><button class="primary" id="voicePermission">Check microphone permission</button><p id="voiceStatus" class="message"></p></div>
-      </section>
-
-      <section class="page" id="page-video-call">
-        <div class="page-heading"><button class="back-btn" data-open="calls">← Back</button><h2>Video call</h2></div>
-        <div class="call-stage"><div class="video-placeholder">▣</div><h2>Video call setup</h2><p>Camera, microphone, WebRTC signaling and TURN relay are required.</p><span class="status-chip">Not connected</span><button class="primary" id="videoPermission">Check camera & microphone</button><p id="videoStatus" class="message"></p></div>
-      </section>
-
-      <section class="page" id="page-media">
-        <div class="page-heading"><div><span class="eyebrow">SHARE</span><h2>Photos & videos</h2></div></div>
-        <div class="panel"><h3>Choose a photo or video</h3><input id="mediaPicker" type="file" accept="image/*,video/*"><p class="muted">This only selects a file on this device. Uploading and sharing it with friends requires a storage provider and secure upload rules.</p><div id="mediaPreview"></div></div>
-      </section>
-
-      <section class="page" id="page-voice">
-        <div class="page-heading"><div><span class="eyebrow">AUDIO</span><h2>Voice messages</h2></div></div>
-        <div class="panel"><h3>Voice recorder</h3><p class="muted">You can test microphone permission. Saving and sending recordings needs media storage.</p><button id="voiceRecord" class="primary full">Check microphone</button><p id="recordStatus" class="message"></p></div>
-      </section>
-
-      <section class="page" id="page-profile">
-        <div class="page-heading"><div><span class="eyebrow">YOUR ACCOUNT</span><h2>Profile</h2></div></div>
-        <div class="panel profile-panel"><div class="profile-avatar" id="profileAvatar">S</div><h2 id="profileName">SD DOST CHAT user</h2><p id="profileEmail" class="muted"></p><div class="uid-box"><small>Your Firebase UID</small><p id="profileUid"></p><button id="copyUid" class="outline">Copy UID</button></div></div>
-      </section>
-
-      <section class="page" id="page-settings">
-        <div class="page-heading"><div><span class="eyebrow">PREFERENCES</span><h2>Settings</h2></div></div>
-        <div class="settings-list">
-          <button class="settings-row" data-open="account-settings"><span>👤</span><div><b>Account settings</b><small>Account and sign-in</small></div><i>›</i></button>
-          <button class="settings-row" data-open="privacy"><span>🛡️</span><div><b>Privacy & security</b><small>Privacy options</small></div><i>›</i></button>
-          <button class="settings-row" data-open="chat-lock"><span>🔒</span><div><b>Chat lock</b><small>Lock options</small></div><i>›</i></button>
-          <button class="settings-row" data-open="notifications"><span>🔔</span><div><b>Notifications</b><small>Notification setup</small></div><i>›</i></button>
-          <button class="settings-row" data-open="media"><span>🖼️</span><div><b>Media sharing</b><small>Photos and videos</small></div><i>›</i></button>
-          <button class="settings-row" data-open="voice"><span>🎙️</span><div><b>Voice messages</b><small>Microphone options</small></div><i>›</i></button>
-          <button class="settings-row" data-open="calls"><span>📞</span><div><b>Calls</b><small>Voice and video calls</small></div><i>›</i></button>
-        </div>
-        <button id="logout" class="danger full">Log out</button>
-      </section>
-
-      <section class="page" id="page-account-settings"><div class="page-heading"><button class="back-btn" data-open="settings">← Back</button><h2>Account settings</h2></div><div class="panel"><p>Signed-in account</p><b id="settingsEmail"></b><p class="muted">Use Forgot password on the sign-in screen to reset your password.</p></div></section>
-      <section class="page" id="page-privacy"><div class="page-heading"><button class="back-btn" data-open="settings">← Back</button><h2>Privacy & security</h2></div><div class="panel"><h3>Privacy setup</h3><p class="muted">Private database rules, friend permissions and chat membership checks must be configured before sharing real messages.</p><span class="status-chip">Security setup required</span></div></section>
-      <section class="page" id="page-chat-lock"><div class="page-heading"><button class="back-btn" data-open="settings">← Back</button><h2>Chat lock</h2></div><div class="panel"><h3>Chat lock</h3><p class="muted">This screen is a placeholder. A real lock needs secure re-authentication or device biometrics and must not store a plain-text PIN.</p><span class="status-chip">Not enabled</span></div></section>
-      <section class="page" id="page-notifications"><div class="page-heading"><button class="back-btn" data-open="settings">← Back</button><h2>Notifications</h2></div><div class="panel"><h3>Notifications</h3><p class="muted">Push notifications require Firebase Cloud Messaging, a service worker, and browser permission. This needs a separate setup step.</p><span class="status-chip">Setup required</span></div></section>
-    </main>
-
-    <nav class="bottom-nav" aria-label="Main navigation">
-      <button class="nav-item selected" data-open="home"><span>⌂</span><small>Home</small></button>
-      <button class="nav-item" data-open="chats"><span>💬</span><small>Chats</small></button>
-      <button class="nav-item" data-open="friends"><span>👥</span><small>Friends</small></button>
-      <button class="nav-item" data-open="calls"><span>☎</span><small>Calls</small></button>
-      <button class="nav-item" data-open="settings"><span>⚙</span><small>Settings</small></button>
-    </nav>
+<div id="appScreen" class="hidden">
+<main>
+<section id="page-chats" class="page">
+  <div class="panel"><h2>Chats</h2><p class="muted">Your private conversations will appear here.</p><div id="chatList"><p class="muted">No conversations yet. Add a friend to get started.</p></div></div>
+  <div class="panel hidden" id="activeChat">
+    <div class="row"><button class="secondary" id="backChats">← Back</button><h3 id="chatTitle">Chat</h3></div>
+    <div id="messages" class="chatbox"></div>
+    <div class="row"><input id="messageInput" placeholder="Write a message"><button id="sendMessage">Send</button></div>
+    <div class="row"><button class="secondary" id="recordBtn">🎙 Record voice</button><button class="secondary" id="attachBtn">＋ Photo/video</button></div>
+    <p id="chatNotice" class="muted">Media sharing requires a storage service to be connected.</p>
   </div>
-  <script type="module" src="app.js"></script>
+</section>
+
+<section id="page-friends" class="page hidden">
+ <div class="panel"><h2>Friends</h2><label>Find friend by UID</label><div class="row"><input id="friendUid" placeholder="Enter friend's UID"><button id="addFriend">Add</button></div><p class="muted">Friend search and requests will be connected to the secure database rules in the next setup step.</p><div id="friendsList"></div></div>
+</section>
+
+<section id="page-requests" class="page hidden">
+ <div class="panel"><h2>Friend Requests</h2><div id="requestsList"><p class="muted">No requests to show.</p></div></div>
+</section>
+
+<section id="page-profile" class="page hidden">
+ <div class="panel"><h2>Profile</h2><div class="row"><div class="avatar" id="avatar">S</div><div><h3 id="profileName">Your profile</h3><p class="muted" id="profileEmail"></p></div></div><div class="item"><b>Your UID</b><p class="muted" id="profileUid" style="overflow-wrap:anywhere"></p><button class="secondary" id="copyUid">Copy UID</button></div></div>
+</section>
+
+<section id="page-settings" class="page hidden">
+ <div class="panel"><h2>Settings</h2><div class="item"><b>Account</b><p class="muted">Signed-in account and security</p></div><div class="item"><b>Notifications</b><p class="muted">Notification setup will be added after deployment configuration.</p></div><div class="item"><b>Privacy & Chat Lock</b><p class="muted">Secure chat-lock controls are not enabled yet.</p></div><div class="item"><b>Calls</b><p class="muted">Voice and video calling require WebRTC signaling and a secure call service.</p><button class="secondary" disabled>Voice call — setup required</button> <button class="secondary" disabled>Video call — setup required</button></div><button id="logout" style="background:#9b2c2c">Log out</button></div>
+</section>
+</main>
+<nav class="tabs hidden" id="tabs">
+ <button class="active" data-page="chats"><span>💬</span>Chats</button>
+ <button data-page="friends"><span>👥</span>Friends</button>
+ <button data-page="requests"><span>📩</span>Requests</button>
+ <button data-page="profile"><span>👤</span>Profile</button>
+ <button data-page="settings"><span>⚙️</span>Settings</button>
+</nav>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBjQ41eCIrZpli6oERkCGam4T7js7HxQsM",
+  authDomain: "sd-dost-chat.firebaseapp.com",
+  databaseURL: "https://sd-dost-chat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sd-dost-chat",
+  storageBucket: "sd-dost-chat.firebasestorage.app",
+  messagingSenderId: "828889822031",
+  appId: "1:828889822031:web:c9c0224384915d63b38b3a"
+};
+const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getDatabase(app);
+let isSignup=true, currentUser=null, currentFriend=null, stopMessages=null;
+
+const $=id=>document.getElementById(id);
+function msg(t){$("authMsg").textContent=t}
+$("switchAuth").onclick=()=>{isSignup=!isSignup;$("authTitle").textContent=isSignup?"Welcome to SD DOST CHAT":"Log in";$("authBtn").textContent=isSignup?"Create account":"Log in";$("switchAuth").textContent=isSignup?"I already have an account":"Create a new account";$("nameWrap").classList.toggle("hidden",!isSignup);msg("")};
+$("authBtn").onclick=async()=>{
+ const email=$("email").value.trim(), password=$("password").value, name=$("name").value.trim();
+ if(!email||!password||(isSignup&&!name)){msg("Please complete all required fields.");return}
+ try{
+  if(isSignup){const cred=await createUserWithEmailAndPassword(auth,email,password);await updateProfile(cred.user,{displayName:name});await set(ref(db,"publicProfiles/"+cred.user.uid),{name,email,uid:cred.user.uid});}
+  else await signInWithEmailAndPassword(auth,email,password);
+ }catch(e){msg(e.message)}
+};
+$("forgotBtn").onclick=async()=>{const email=$("email").value.trim();if(!email){msg("Enter your email first.");return}try{await sendPasswordResetEmail(auth,email);msg("Password reset email sent. Check your inbox.")}catch(e){msg(e.message)}};
+onAuthStateChanged(auth,user=>{
+ currentUser=user;
+ $("authScreen").classList.toggle("hidden",!!user);$("appScreen").classList.toggle("hidden",!user);$("tabs").classList.toggle("hidden",!user);
+ if(user){$("headerUser").textContent=user.displayName||user.email;$("profileName").textContent=user.displayName||"SD DOST CHAT user";$("profileEmail").textContent=user.email||"";$("profileUid").textContent=user.uid;$("avatar").textContent=(user.displayName||"S").charAt(0).toUpperCase();showPage("chats")}
+ else $("headerUser").textContent="";
+});
+function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));$("page-"+name).classList.remove("hidden");document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.page===name));$("activeChat").classList.add("hidden")}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+$("logout").onclick=()=>signOut(auth);
+$("copyUid").onclick=async()=>{try{await navigator.clipboard.writeText(currentUser.uid);alert("UID copied")}catch{alert(currentUser.uid)}};
+$("addFriend").onclick=()=>alert("Friend request sending is not enabled yet. The database rules and request paths must be aligned securely before this is switched on.");
+$("backChats").onclick=()=>{$("activeChat").classList.add("hidden");$("chatList").parentElement.classList.remove("hidden")};
+$("sendMessage").onclick=()=>{if(!$("messageInput").value.trim())return;alert("Messaging needs the chat-room database structure and secure membership rules to be connected before sending.");};
+$("recordBtn").onclick=async()=>{if(!navigator.mediaDevices?.getUserMedia){alert("Voice recording is not supported in this browser.");return}try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop());alert("Microphone permission works. Sending voice notes needs media storage to be connected.")}catch(e){alert("Microphone permission was not granted.")}};
+$("attachBtn").onclick=()=>alert("Photo and video sharing needs a storage provider. Firebase Storage billing is not enabled in this project.");
+</script>
 </body>
 </html>
