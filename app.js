@@ -143,3 +143,4 @@ $("recordButton").addEventListener("click",()=>testMedia("audio","recordStatus")
 document.querySelectorAll(".switch input").forEach(input=>input.addEventListener("change",()=>toast(input.checked?"Option turned on in preview.":"Option turned off in preview.")));
 
 setAuthMode(false);
+                                           
