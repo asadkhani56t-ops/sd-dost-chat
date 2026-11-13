@@ -1,586 +1,145 @@
-
-:root {
-  --navy: #142d50;
-  --navy-light: #203f69;
-  --white: #ffffff;
-  --bg: #eef1f5;
-  --line: #dce2ea;
-  --text: #172438;
-  --muted: #7b8798;
-  --green: #239b70;
-  --red: #d94b55;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-}
-
-button, input {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-.hidden {
-  display: none !important;
-}
-
-/* LOGIN AND SIGNUP */
-.auth-wrap {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  background: linear-gradient(135deg, #eef1f5, #ffffff);
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 420px;
-  padding: 35px 26px;
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: 0 12px 40px rgba(20,45,80,.09);
-}
-
-.brand-mark {
-  width: 65px;
-  height: 65px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: var(--navy);
-  color: white;
-  border-radius: 18px;
-  font-size: 25px;
-  font-weight: bold;
-  margin: 0 auto 18px;
-}
-
-.auth-card h1 {
-  color: var(--navy);
-  text-align: center;
-  font-size: 25px;
-}
-
-.sub {
-  text-align: center;
-  color: var(--muted);
-  margin: 10px 0 28px;
-}
-
-/* INPUTS */
-label {
-  display: block;
-  font-size: 13px;
-  font-weight: bold;
-  margin: 15px 0 7px;
-  color: var(--navy);
-}
-
-input {
-  width: 100%;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  outline: none;
-  background: #fafbfd;
-  color: var(--text);
-}
-
-input:focus {
-  border-color: var(--navy);
-  box-shadow: 0 0 0 3px rgba(20,45,80,.08);
-}
-
-/* BUTTONS */
-.primary, .outline, .danger, .link {
-  border: none;
-  padding: 13px 18px;
-  border-radius: 11px;
-  font-weight: bold;
-  margin-top: 12px;
-}
-
-.primary {
-  background: var(--navy);
-  color: white;
-}
-
-.primary:hover {
-  background: var(--navy-light);
-}
-
-.outline {
-  background: white;
-  color: var(--navy);
-  border: 1px solid var(--navy);
-}
-
-.danger {
-  background: var(--red);
-  color: white;
-}
-
-.link {
-  background: transparent;
-  color: var(--navy);
-}
-
-.full {
-  width: 100%;
-}
-
-/* APP */
-.app-shell {
-  min-height: 100vh;
-  max-width: 1000px;
-  margin: auto;
-  background: var(--white);
-  padding-bottom: 85px;
-}
-
-.topbar {
-  height: 76px;
-  padding: 12px 20px;
-  background: white;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--navy);
-}
-
-.brand small {
-  display: block;
-  color: var(--muted);
-  margin-top: 4px;
-}
-
-.brand-mark.small {
-  width: 43px;
-  height: 43px;
-  font-size: 17px;
-  margin: 0;
-  border-radius: 12px;
-}
-
-.avatar-btn {
-  width: 43px;
-  height: 43px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--navy);
-  color: white;
-  font-weight: bold;
-}
-
-/* MAIN PAGES */
-.main-content {
-  padding: 22px;
-}
-
-.page {
-  display: none;
-}
-
-.page.active {
-  display: block;
-}
-
-.hero-card {
-  padding: 26px;
-  border-radius: 19px;
-  background: var(--navy);
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.hero-card h2 {
-  margin: 12px 0;
-  font-size: 26px;
-}
-
-.hero-card p {
-  color: #dce5f1;
-  line-height: 1.6;
-}
-
-.eyebrow {
-  font-size: 11px;
-  letter-spacing: 2px;
-  opacity: .75;
-}
-
-.hero-icon {
-  font-size: 45px;
-}
-
-.section-heading {
-  margin: 28px 0 15px;
-  color: var(--navy);
-}
-
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 13px;
-}
-
-.quick-card {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  padding: 19px;
-  text-align: left;
-  color: var(--navy);
-}
-
-.quick-card span {
-  display: block;
-  font-size: 27px;
-  margin-bottom: 12px;
-}
-
-.quick-card b,
-.quick-card small {
-  display: block;
-}
-
-.quick-card small {
-  color: var(--muted);
-  margin-top: 6px;
-}
-
-/* HEADINGS */
-.page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 22px;
-  color: var(--navy);
-}
-
-.page-heading h2 {
-  font-size: 25px;
-  margin-top: 5px;
-}
-
-.round-action {
-  width: 42px;
-  height: 42px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--navy);
-  color: white;
-  font-size: 25px;
-}
-
-.back-btn {
-  padding: 10px;
-  border: 0;
-  background: transparent;
-  color: var(--navy);
-}
-
-/* PANELS */
-.panel, .info-card {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 17px;
-}
-
-.panel h3 {
-  color: var(--navy);
-  margin-bottom: 12px;
-}
-
-.muted {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 10px 0;
-}
-
-.info-card {
-  margin-top: 20px;
-  background: #f7f9fc;
-}
-
-/* SEARCH */
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg);
-  padding: 5px 13px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-}
-
-.search-box input {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-/* EMPTY STATES */
-.empty-state {
-  text-align: center;
-  padding: 45px 18px;
-  background: #f8fafc;
-  border-radius: 17px;
-  border: 1px dashed var(--line);
-}
-
-.empty-state h3 {
-  color: var(--navy);
-  margin: 12px 0;
-}
-
-.empty-state p {
-  color: var(--muted);
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.empty-icon {
-  font-size: 42px;
-}
-
-.compact {
-  padding: 30px 15px;
-}
-
-/* CALLS */
-.call-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 13px;
-}
-
-.call-card {
-  text-align: center;
-}
-
-.call-icon {
-  font-size: 36px;
-  margin-bottom: 12px;
-}
-
-.call-stage {
-  text-align: center;
-  padding: 45px 15px;
-  background: #f8fafc;
-  border-radius: 18px;
-}
-
-.call-avatar {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: var(--navy);
-  color: white;
-  display: grid;
-  place-items: center;
-  font-size: 40px;
-  margin: 0 auto 22px;
-}
-
-.video-placeholder {
-  height: 200px;
-  background: #dce2ea;
-  border-radius: 16px;
-  display: grid;
-  place-items: center;
-  font-size: 45px;
-  margin-bottom: 20px;
-}
-
-.status-chip {
-  display: inline-block;
-  background: #edf1f6;
-  color: var(--navy);
-  padding: 8px 13px;
-  border-radius: 20px;
-  font-size: 12px;
-  margin: 15px 0;
-}
-
-.notice {
-  padding: 15px;
-  background: #f3f6fa;
-  color: var(--muted);
-  border-radius: 12px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* PROFILE */
-.profile-panel {
-  text-align: center;
-}
-
-.profile-avatar {
-  width: 85px;
-  height: 85px;
-  display: grid;
-  place-items: center;
-  margin: 0 auto 15px;
-  border-radius: 50%;
-  background: var(--navy);
-  color: white;
-  font-size: 30px;
-}
-
-.uid-box {
-  margin-top: 22px;
-  padding: 15px;
-  background: #f4f6f9;
-  border-radius: 12px;
-  overflow-wrap: anywhere;
-}
-
-.uid-box small {
-  color: var(--muted);
-}
-
-/* SETTINGS */
-.settings-list {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 22px;
-}
-
-.settings-row {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  width: 100%;
-  padding: 16px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  text-align: left;
-  color: var(--navy);
-}
-
-.settings-row span {
-  font-size: 23px;
-}
-
-.settings-row div {
-  flex: 1;
-}
-
-.settings-row small {
-  display: block;
-  color: var(--muted);
-  margin-top: 5px;
-}
-
-.settings-row i {
-  font-size: 22px;
-  font-style: normal;
-}
-
-/* NAVIGATION */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 1000px;
-  height: 72px;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  background: white;
-  border-top: 1px solid var(--line);
-  z-index: 20;
-}
-
-.nav-item {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  min-width: 55px;
-}
-
-.nav-item span {
-  font-size: 21px;
-}
-
-.nav-item small {
-  font-size: 11px;
-}
-
-.nav-item.selected {
-  color: var(--navy);
-  font-weight: bold;
-}
-
-/* MESSAGES */
-.message {
-  font-size: 13px;
-  color: var(--green);
-  margin-top: 12px;
-  line-height: 1.5;
-}
-
-/* MOBILE */
-@media (max-width: 600px) {
-  .main-content {
-    padding: 15px;
-  }
-
-  .auth-card {
-    padding: 28px 20px;
-  }
-
-  .hero-card {
-    padding: 20px;
-  }
-
-  .hero-card h2 {
-    font-size: 22px;
-  }
-
-  .call-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .quick-card {
-    padding: 15px;
-  }
-}
+const $ = (id) => document.getElementById(id);
+const pages = ["home","chats","chatroom","friends","requests","groups","calls","voice-call","video-call","voice","media","profile","settings","account-settings","privacy","security","blocked","notifications","chat-settings","storage","forgot"];
+let isLogin = false;
+let currentUser = {name:"SD User", email:"demo@example.com"};
+let friends = [];
+let requests = [];
+let groups = [];
+let currentChat = "Friend";
+let toastTimer;
+
+function toast(message){
+  const el=$("toast"); if(!el) return;
+  el.textContent=message; el.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"),2400);
+}
+function openPage(name){
+  if(!pages.includes(name)) name="home";
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  const page=$("page-"+name); if(page) page.classList.add("active");
+  document.querySelectorAll("[data-page].nav-link").forEach(b=>b.classList.toggle("active",b.dataset.page===name));
+  const titles={"home":"Home","chats":"Messages","chatroom":"Private chat","friends":"Friends","requests":"Friend requests","groups":"Group chats","calls":"Calls","voice-call":"Voice call","video-call":"Video call","voice":"Voice messages","media":"Photos & videos","profile":"My profile","settings":"Settings","account-settings":"Account settings","privacy":"Privacy settings","security":"Security","blocked":"Blocked contacts","notifications":"Notifications","chat-settings":"Chat settings","storage":"Media & storage","forgot":"Forgot password"};
+  $("topTitle").textContent=titles[name]||"SD DOST CHAT";
+  document.querySelector(".sidebar")?.classList.remove("open");
+  if(name==="profile") updateProfile();
+  if(name==="friends") renderFriends();
+  if(name==="requests") renderRequests();
+  if(name==="groups") renderGroups();
+  if(name==="chats") renderChats();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function updateProfile(){
+  const name=currentUser.name||"SD User", email=currentUser.email||"";
+  ["sideName","profileName","detailName"].forEach(id=>{if($(id)) $(id).textContent=name;});
+  ["profileEmail","detailEmail","accountEmail"].forEach(id=>{if($(id)) $(id).textContent=email;});
+  $("profileAvatar").textContent=name.slice(0,2).toUpperCase();
+  $("topTitle").textContent="My profile";
+  $("homeGreeting").textContent="Hello, "+name+"!";
+}
+function showApp(){
+  $("authScreen").classList.add("hidden"); $("appShell").classList.remove("hidden");
+  updateProfile(); openPage("home");
+}
+function showAuth(){
+  $("appShell").classList.add("hidden"); $("authScreen").classList.remove("hidden");
+}
+function setAuthMode(login){
+  isLogin=login;
+  $("signupFields").classList.toggle("hidden",login);
+  $("authSubmit").textContent=login?"Log in":"Create account";
+  $("toggleAuth").textContent=login?"Create a new account":"Already have an account? Log in";
+  $("password").autocomplete=login?"current-password":"new-password";
+  $("authMessage").textContent="";
+}
+$("toggleAuth").addEventListener("click",()=>setAuthMode(!isLogin));
+$("authSubmit").addEventListener("click",()=>{
+  const email=$("email").value.trim(), password=$("password").value, name=$("displayName").value.trim();
+  if(!email||!password||(!isLogin&&!name)){ $("authMessage").textContent="Please fill in all required fields."; return; }
+  if(password.length<6){ $("authMessage").textContent="Password must be at least 6 characters."; return; }
+  currentUser={name:isLogin?(name||email.split("@")[0]):name,email};
+  $("authMessage").textContent=""; showApp();
+  toast("Design preview opened. Firebase will be connected later.");
+});
+$("forgotPassword").addEventListener("click",()=>{
+  $("forgotEmail").value=$("email").value.trim(); showApp(); openPage("forgot");
+});
+$("forgotForm").addEventListener("submit",e=>{
+  e.preventDefault(); const email=$("forgotEmail").value.trim();
+  $("forgotFeedback").textContent=email?"Preview: password reset will be sent after Firebase connection.":"Enter your email address.";
+});
+$("logout").addEventListener("click",()=>{showAuth();setAuthMode(true);toast("Logged out of preview.");});
+$("changePassword").addEventListener("click",()=>{$("accountFeedback").textContent="Password reset will be connected with Firebase later.";});
+
+document.addEventListener("click",e=>{
+  const target=e.target.closest("[data-page]");
+  if(target){ e.preventDefault(); openPage(target.dataset.page); }
+});
+$("mobileMenu").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
+
+function renderFriends(){
+  $("friendCount").textContent=friends.length+" friends";
+  $("friendsList").innerHTML=friends.length?friends.map((f,i)=>`<div class="settings-row"><span class="avatar">${escapeHTML(f.slice(0,2).toUpperCase())}</span><span><b>${escapeHTML(f)}</b><small>Preview friend</small></span><button class="btn secondary" data-chat="${i}">Message</button></div>`).join(""):`<div class="empty-state compact"><div class="empty-symbol">♧</div><h3>No friends added</h3><p>Your accepted friends will appear here.</p></div>`;
+}
+function renderRequests(){
+  $("requestList").innerHTML=requests.length?requests.map((r,i)=>`<div class="settings-row"><span class="avatar">${escapeHTML(r.slice(0,2).toUpperCase())}</span><span><b>${escapeHTML(r)}</b><small>Wants to connect</small></span><button class="btn primary" data-accept="${i}">Accept</button></div>`).join(""):`<div class="empty-state"><div class="empty-symbol">✉</div><h3>No new requests</h3><p>New friend invitations will appear here.</p></div>`;
+}
+function renderGroups(){
+  $("groupList").innerHTML=groups.length?groups.map(g=>`<div class="settings-row"><span class="avatar">◎</span><span><b>${escapeHTML(g)}</b><small>Preview group</small></span><span class="status-pill">Created</span></div>`).join(""):`<div class="empty-state compact"><div class="empty-symbol">◎</div><h3>No groups yet</h3><p>Groups you create will appear here.</p></div>`;
+}
+function renderChats(){
+  $("chatList").innerHTML=friends.length?friends.map((f,i)=>`<button class="settings-row chat-open" data-chat="${i}"><span class="avatar">${escapeHTML(f.slice(0,2).toUpperCase())}</span><span><b>${escapeHTML(f)}</b><small>Tap to open private chat</small></span><i>›</i></button>`).join(""):`<div class="empty-state"><div class="empty-symbol">▤</div><h3>No conversations yet</h3><p>Add a friend to start a private conversation.</p><button class="btn primary" data-page="friends">Find friends</button></div>`;
+}
+$("friendForm").addEventListener("submit",e=>{
+  e.preventDefault(); const name=$("friendName").value.trim();
+  if(!name){$("friendFeedback").textContent="Enter a name first.";return;}
+  if(friends.includes(name)){ $("friendFeedback").textContent="This person is already in your preview friends list.";return;}
+  requests.push(name); $("friendName").value=""; $("friendFeedback").textContent="Demo request created. Open Friend requests to accept it."; toast("Friend request added to preview."); 
+});
+$("requestList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-accept]"); if(!b)return;
+  const idx=Number(b.dataset.accept), name=requests.splice(idx,1)[0]; if(name&&!friends.includes(name))friends.push(name);
+  renderRequests(); toast(name+" added to your preview friends."); 
+});
+$("friendsList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-chat]"); if(!b)return; startChat(friends[Number(b.dataset.chat)]);
+});
+$("chatList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-chat]"); if(!b)return; startChat(friends[Number(b.dataset.chat)]);
+});
+function startChat(name){
+  currentChat=name||"Friend"; $("chatRoomTitle").textContent=currentChat; $("chatRoomName").textContent=currentChat; openPage("chatroom");
+}
+function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+$("messageForm").addEventListener("submit",e=>{
+  e.preventDefault(); const input=$("messageInput"), value=input.value.trim(); if(!value)return;
+  const bubble=document.createElement("div"); bubble.className="bubble sent"; bubble.textContent=value;
+  $("messageArea").appendChild(bubble); input.value=""; $("messageArea").scrollTop=$("messageArea").scrollHeight;
+});
+$("groupForm").addEventListener("submit",e=>{
+  e.preventDefault(); const name=$("groupName").value.trim(); if(!name){$("groupFeedback").textContent="Enter a group name.";return;}
+  groups.push(name); $("groupName").value=""; $("groupFeedback").textContent="Group created in this design preview."; renderGroups(); toast("Group created.");
+});
+$("chatSearch").addEventListener("input",e=>{
+  const q=e.target.value.toLowerCase();
+  document.querySelectorAll("#chatList [data-chat]").forEach(el=>el.style.display=el.textContent.toLowerCase().includes(q)?"flex":"none");
+});
+$("mediaPicker").addEventListener("change",e=>{
+  const file=e.target.files[0], preview=$("mediaPreview"); preview.innerHTML="";
+  if(!file)return;
+  const url=URL.createObjectURL(file), el=document.createElement(file.type.startsWith("video/")?"video":"img");
+  el.src=url; if(el.tagName==="VIDEO"){el.controls=true;} preview.appendChild(el);
+});
+async function testMedia(kind,statusId){
+  const status=$(statusId);
+  if(!navigator.mediaDevices?.getUserMedia){status.textContent="This browser does not support media permission testing.";return;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia(kind==="video"?{audio:true,video:true}:{audio:true});
+    stream.getTracks().forEach(t=>t.stop()); status.textContent="Permission granted on this device. Real calls are not connected yet.";
+  }catch(err){status.textContent="Permission not granted or unavailable. You can allow it in browser settings.";}
+}
+$("voiceCallAction").addEventListener("click",()=>testMedia("audio","voiceCallStatus"));
+$("videoCallAction").addEventListener("click",()=>testMedia("video","videoCallStatus"));
+$("recordButton").addEventListener("click",()=>testMedia("audio","recordStatus"));
+document.querySelectorAll(".switch input").forEach(input=>input.addEventListener("change",()=>toast(input.checked?"Option turned on in preview.":"Option turned off in preview.")));
+
+setAuthMode(false);
