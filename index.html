@@ -84,51 +84,7 @@ h2{font-size:20px;margin:0 0 14px;color:var(--navy)}h3{font-size:16px;margin:0 0
  <button data-page="settings"><span>⚙️</span>Settings</button>
 </nav>
 </div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBjQ41eCIrZpli6oERkCGam4T7js7HxQsM",
-  authDomain: "sd-dost-chat.firebaseapp.com",
-  databaseURL: "https://sd-dost-chat-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "sd-dost-chat",
-  storageBucket: "sd-dost-chat.firebasestorage.app",
-  messagingSenderId: "828889822031",
-  appId: "1:828889822031:web:c9c0224384915d63b38b3a"
-};
-const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getDatabase(app);
-let isSignup=true, currentUser=null, currentFriend=null, stopMessages=null;
-
-const $=id=>document.getElementById(id);
-function msg(t){$("authMsg").textContent=t}
-$("switchAuth").onclick=()=>{isSignup=!isSignup;$("authTitle").textContent=isSignup?"Welcome to SD DOST CHAT":"Log in";$("authBtn").textContent=isSignup?"Create account":"Log in";$("switchAuth").textContent=isSignup?"I already have an account":"Create a new account";$("nameWrap").classList.toggle("hidden",!isSignup);msg("")};
-$("authBtn").onclick=async()=>{
- const email=$("email").value.trim(), password=$("password").value, name=$("name").value.trim();
- if(!email||!password||(isSignup&&!name)){msg("Please complete all required fields.");return}
- try{
-  if(isSignup){const cred=await createUserWithEmailAndPassword(auth,email,password);await updateProfile(cred.user,{displayName:name});await set(ref(db,"publicProfiles/"+cred.user.uid),{name,email,uid:cred.user.uid});}
-  else await signInWithEmailAndPassword(auth,email,password);
- }catch(e){msg(e.message)}
-};
-$("forgotBtn").onclick=async()=>{const email=$("email").value.trim();if(!email){msg("Enter your email first.");return}try{await sendPasswordResetEmail(auth,email);msg("Password reset email sent. Check your inbox.")}catch(e){msg(e.message)}};
-onAuthStateChanged(auth,user=>{
- currentUser=user;
- $("authScreen").classList.toggle("hidden",!!user);$("appScreen").classList.toggle("hidden",!user);$("tabs").classList.toggle("hidden",!user);
- if(user){$("headerUser").textContent=user.displayName||user.email;$("profileName").textContent=user.displayName||"SD DOST CHAT user";$("profileEmail").textContent=user.email||"";$("profileUid").textContent=user.uid;$("avatar").textContent=(user.displayName||"S").charAt(0).toUpperCase();showPage("chats")}
- else $("headerUser").textContent="";
-});
-function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));$("page-"+name).classList.remove("hidden");document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.page===name));$("activeChat").classList.add("hidden")}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
-$("logout").onclick=()=>signOut(auth);
-$("copyUid").onclick=async()=>{try{await navigator.clipboard.writeText(currentUser.uid);alert("UID copied")}catch{alert(currentUser.uid)}};
-$("addFriend").onclick=()=>alert("Friend request sending is not enabled yet. The database rules and request paths must be aligned securely before this is switched on.");
-$("backChats").onclick=()=>{$("activeChat").classList.add("hidden");$("chatList").parentElement.classList.remove("hidden")};
-$("sendMessage").onclick=()=>{if(!$("messageInput").value.trim())return;alert("Messaging needs the chat-room database structure and secure membership rules to be connected before sending.");};
-$("recordBtn").onclick=async()=>{if(!navigator.mediaDevices?.getUserMedia){alert("Voice recording is not supported in this browser.");return}try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop());alert("Microphone permission works. Sending voice notes needs media storage to be connected.")}catch(e){alert("Microphone permission was not granted.")}};
-$("attachBtn").onclick=()=>alert("Photo and video sharing needs a storage provider. Firebase Storage billing is not enabled in this project.");
-</script>
+  
+<script type="module" src="app.js"></script>
 </body>
 </html>
