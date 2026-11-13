@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#142d50">
+<title>SD Dost Chat</title>
+<style>
+:root{--navy:#142d50;--light:#eef1f5;--line:#dce2ea}
+*{box-sizing:border-box}
+body{margin:0;background:var(--light);color:#17243b;font-family:Arial,sans-serif}
+header{background:var(--navy);color:white;text-align:center;padding:18px}
+main{max-width:680px;margin:18px auto;padding:12px}
+.card{background:white;padding:18px;border-radius:14px;margin-bottom:14px;box-shadow:0 3px 12px #0001}
+h2{margin:0 0 12px;color:var(--navy);font-size:20px}
+input,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #ccd3dc;font-size:15px}
+button{background:var(--navy);color:white;border:0;cursor:pointer}
+button.secondary{background:#e7edf5;color:var(--navy)}
+button:disabled{opacity:.55;cursor:not-allowed}
+.small{font-size:12px;color:#65748a;overflow-wrap:anywhere}
+.item{padding:10px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.item button{width:auto;padding:8px 12px;margin-left:6px}
+#status{padding:8px 12px;margin-bottom:10px;border-radius:8px;background:#fff4d6;color:#684b00;white-space:pre-wrap;overflow-wrap:anywhere}
+#messages{height:260px;overflow:auto;background:#f5f7fa;padding:10px;border-radius:8px}
+.msg{padding:9px;margin:7px 0;border-radius:9px;background:#e2eaf5;max-width:85%;overflow-wrap:anywhere}
+.mine{background:#d9e9ff;margin-left:auto}
+.hidden{display:none!important}
+.row{display:flex;gap:6px}
+.row input{flex:1;min-width:0}
+.row button{width:auto;min-width:100px}
+</style>
+</head>
+<body>
+<header>
+  <h1>SD Dost Chat</h1>
+  <p>Friends • Requests • Private Chat</p>
+</header>
+
+<main>
+  <div id="status" role="status">Welcome to SD Dost Chat.</div>
+
+  <section id="auth" class="card">
+    <h2>Create account / Login</h2>
+    <input id="username" autocomplete="nickname" placeholder="Username (for new account)">
+    <input id="email" type="email" autocomplete="email" placeholder="Email address">
+    <input id="password" type="password" autocomplete="current-password" placeholder="Password (at least 6 characters)">
+    <button id="signup" type="button">Sign Up</button>
+    <button id="login" class="secondary" type="button">Login</button>
+    <button id="forgot" class="secondary" type="button">Forgot Password?</button>
+    <p class="small">Create an account here first. Login only works with an account created in this same SD Dost Chat Firebase project. Passwords are case-sensitive. For password reset, enter your email above and tap Forgot Password.</p>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="card">
+      <h2>My Profile</h2>
+      <p id="myName">Loading profile…</p>
+      <p class="small">Your User ID:</p>
+      <p id="myUid" class="small"></p>
+      <button id="copyUid" class="secondary" type="button">Copy User ID</button>
+      <button id="logout" class="secondary" type="button">Logout</button>
+    </div>
+
+    <div class="card">
+      <h2>Add a Friend</h2>
+      <input id="friendUid" placeholder="Paste your friend's User ID">
+      <button id="sendRequest" type="button">Send Friend Request</button>
+    </div>
+
+    <div class="card">
+      <h2>Friend Requests</h2>
+      <div id="requests">No requests yet.</div>
+    </div>
+
+    <div class="card">
+      <h2>My Friends</h2>
+      <div id="friends">No friends yet.</div>
+    </div>
+
+    <div class="card">
+      <h2 id="chatTitle">Private Chat</h2>
+      <div id="messages">Choose a friend to open a chat.</div>
+      <div class="row">
+        <input id="messageInput" placeholder="Write a message…" disabled>
+        <button id="sendMessage" type="button" disabled>Send</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendPasswordResetEmail, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getDatabase, ref, set, get, push, update, onValue
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBjQ41eCIrZpli6oERkCGam4T7js7HxQsM",
+  authDomain: "sd-dost-chat.firebaseapp.com",
+  databaseURL: "https://sd-dost-chat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sd-dost-chat",
+  storageBucket: "sd-dost-chat.firebasestorage.app",
+  messagingSenderId: "828889822031",
+  appId: "1:828889822031:web:c9c0224384915d63b38b3a"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getDatabase(firebaseApp);
+const $ = id => document.getElementById(id);
+
+let currentUser = null;
+let selectedFriend = null;
+let stopFriends = null;
+let stopRequests = null;
+let stopMessages = null;
+
+function showStatus(message) {
+  $("status").textContent = message;
+}
+function explainError(error) {
+  const code = error?.code || "unknown";
+  const messages = {
+    "auth/email-already-in-use": "This email already has an account. Use Login or Forgot Password.",
+    "auth/invalid-email": "This email address is not valid. Check the spelling.",
+    "auth/weak-password": "Choose a password with at least 6 characters.",
+    "auth/invalid-credential": "Email/password did not match an account in this Firebase project. Check the exact email, or use Forgot Password.",
+    "auth/invalid-login-credentials": "Email/password did not match an account in this Firebase project. Check the exact email, or use Forgot Password.",
+    "auth/user-not-found": "No account exists for this email in this Firebase project. Sign Up first.",
+    "auth/wrong-password": "Password is incorrect. Use Forgot Password to create a new one.",
+    "auth/too-many-requests": "Too many attempts. Wait a while before trying again.",
+    "auth/network-request-failed": "Internet connection problem. Check your connection and try again.",
+    "auth/operation-not-allowed": "Email/Password sign-in is not enabled in Firebase Authentication.",
+    "auth/unauthorized-domain": "This website domain is not authorized in Firebase Authentication settings.",
+    "PERMISSION_DENIED": "Login may be okay, but Firebase Database rules blocked this action. Check Realtime Database Rules."
+  };
+  showStatus((messages[code] || error?.message || "Something went wrong.") + "\nError code: " + code);
+}
+function addTextItem(parent, text) {
+  const div = document.createElement("div");
+  div.className = "item";
+  div.append(document.createTextNode(text));
+  parent.appendChild(div);
+  return div;
+}
+
+$("signup").addEventListener("click", async () => {
+  const username = $("username").value.trim();
+  const email = $("email").value.trim().toLowerCase();
+  const password = $("password").value;
+  if (username.length < 3 || username.length > 25) {
+    showStatus("Username must be between 3 and 25 characters."); return;
+  }
+  if (!email || password.length < 6) {
+    showStatus("Enter your email and a password of at least 6 characters."); return;
+  }
+  $("signup").disabled = true;
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    try {
+      await set(ref(db, "publicProfiles/" + result.user.uid), {
+        username, createdAt: Date.now()
+      });
+      showStatus("Account created successfully. You are now logged in.");
+    } catch (profileError) {
+      showStatus("Your Firebase account was created and you are logged in, but saving the profile was blocked. Check Realtime Database Rules.\n" + (profileError?.code || profileError?.message || "Database error"));
+    }
+  } catch (error) {
+    explainError(error);
+  } finally {
+    $("signup").disabled = false;
+  }
+});
+
+$("login").addEventListener("click", async () => {
+  const email = $("email").value.trim().toLowerCase();
+  const password = $("password").value;
+  if (!email || !password) {
+    showStatus("Enter your email and password first."); return;
+  }
+  $("login").disabled = true;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    showStatus("Login successful. Welcome back!");
+  } catch (error) {
+    explainError(error);
+  } finally {
+    $("login").disabled = false;
+  }
+});
+
+$("forgot").addEventListener("click", async () => {
+  const email = $("email").value.trim();
+  if (!email) {
+    showStatus("Enter your email address first, then tap Forgot Password."); return;
+  }
+  $("forgot").disabled = true;
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showStatus("If this email has an account, a password reset link has been sent. Check Inbox and Spam.");
+  } catch (error) {
+    explainError(error);
+  } finally {
+    $("forgot").disabled = false;
+  }
+});
+
+$("logout").addEventListener("click", async () => {
+  try { await signOut(auth); showStatus("You are logged out."); }
+  catch (error) { explainError(error); }
+});
+
+$("copyUid").addEventListener("click", async () => {
+  const uid = currentUser?.uid;
+  if (!uid) return;
+  try {
+    await navigator.clipboard.writeText(uid);
+    showStatus("User ID copied.");
+  } catch {
+    showStatus("Copy is unavailable here. Select the User ID and copy it manually.");
+  }
+});
+
+$("sendRequest").addEventListener("click", async () => {
+  if (!currentUser) return;
+  const friendUid = $("friendUid").value.trim();
+  if (!friendUid || friendUid === currentUser.uid) {
+    showStatus("Enter another user's valid User ID."); return;
+  }
+  try {
+    const profileSnap = await get(ref(db, "publicProfiles/" + friendUid));
+    if (!profileSnap.exists()) {
+      showStatus("No profile found for that User ID."); return;
+    }
+    const alreadyFriend = await get(ref(db, "friends/" + currentUser.uid + "/" + friendUid));
+    if (alreadyFriend.val() === true) {
+      showStatus("You are already friends."); return;
+    }
+    await set(ref(db, "friendRequests/" + friendUid + "/" + currentUser.uid), {
+      from: currentUser.uid, to: friendUid, status: "pending", createdAt: Date.now()
+    });
+    $("friendUid").value = "";
+    showStatus("Friend request sent.");
+  } catch (error) { explainError(error); }
+});
+
+function watchRequests() {
+  if (stopRequests) stopRequests();
+  stopRequests = onValue(ref(db, "friendRequests/" + currentUser.uid), async snapshot => {
+    const box = $("requests");
+    box.replaceChildren();
+    if (!snapshot.exists()) { box.textContent = "No requests yet."; return; }
+    const entries = Object.entries(snapshot.val()).filter(([, request]) => request?.status === "pending");
+    if (!entries.length) { box.textContent = "No pending requests."; return; }
+    for (const [senderUid] of entries) {
+      const profileSnap = await get(ref(db, "publicProfiles/" + senderUid));
+      const username = profileSnap.exists() ? profileSnap.val().username : "User";
+      const item = addTextItem(box, username + " (" + senderUid + ")");
+      const accept = document.createElement("button");
+      accept.type = "button";
+      accept.textContent = "Accept";
+      accept.addEventListener("click", async () => {
+        try {
+          const changes = {};
+          changes["friendRequests/" + currentUser.uid + "/" + senderUid + "/status"] = "accepted";
+          changes["friendRequests/" + currentUser.uid + "/" + senderUid + "/acceptedAt"] = Date.now();
+          changes["friends/" + currentUser.uid + "/" + senderUid] = true;
+          changes["friends/" + senderUid + "/" + currentUser.uid] = true;
+          await update(ref(db), changes);
+          showStatus("Friend request accepted.");
+        } catch (error) { explainError(error); }
+      });
+      item.appendChild(accept);
+    }
+  }, explainError);
+}
+
+function watchFriends() {
+  if (stopFriends) stopFriends();
+  stopFriends = onValue(ref(db, "friends/" + currentUser.uid), async snapshot => {
+    const box = $("friends");
+    box.replaceChildren();
+    if (!snapshot.exists()) { box.textContent = "No friends yet."; return; }
+    const entries = Object.entries(snapshot.val()).filter(([, value]) => value === true);
+    if (!entries.length) { box.textContent = "No friends yet."; return; }
+    for (const [uid] of entries) {
+      const profileSnap = await get(ref(db, "publicProfiles/" + uid));
+      const username = profileSnap.exists() ? profileSnap.val().username : "Friend";
+      const item = addTextItem(box, username);
+      const open = document.createElement("button");
+      open.type = "button";
+      open.textContent = "Open Chat";
+      open.addEventListener("click", () => openChat(uid, username));
+      item.appendChild(open);
+    }
+  }, explainError);
+}
+
+function openChat(friendUid, friendName) {
+  selectedFriend = friendUid;
+  $("chatTitle").textContent = "Chat with " + friendName;
+  $("messageInput").disabled = false;
+  $("sendMessage").disabled = false;
+  if (stopMessages) stopMessages();
+
+  const pair = [currentUser.uid, friendUid].sort();
+  const messagesPath = "chats/" + pair[0] + "/" + pair[1] + "/messages";
+  stopMessages = onValue(ref(db, messagesPath), snapshot => {
+    const box = $("messages");
+    box.replaceChildren();
+    if (!snapshot.exists()) { box.textContent = "No messages yet. Say hello!"; return; }
+    const messages = Object.values(snapshot.val()).sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+    for (const message of messages) {
+      const bubble = document.createElement("div");
+      bubble.className = "msg" + (message.sender === currentUser.uid ? " mine" : "");
+      bubble.textContent = (message.sender === currentUser.uid ? "You: " : "Friend: ") + message.text;
+      box.appendChild(bubble);
+    }
+    box.scrollTop = box.scrollHeight;
+  }, explainError);
+}
+
+async function sendMessage() {
+  if (!currentUser || !selectedFriend) {
+    showStatus("Choose a friend first."); return;
+  }
+  const messageText = $("messageInput").value.trim();
+  if (!messageText) return;
+  if (messageText.length > 1000) {
+    showStatus("Message is too long (maximum 1000 characters)."); return;
+  }
+  $("sendMessage").disabled = true;
+  try {
+    const pair = [currentUser.uid, selectedFriend].sort();
+    const messagesRef = ref(db, "chats/" + pair[0] + "/" + pair[1] + "/messages");
+    await set(push(messagesRef), {
+      sender: currentUser.uid, text: messageText, createdAt: Date.now()
+    });
+    $("messageInput").value = "";
+  } catch (error) { explainError(error); }
+  finally { $("sendMessage").disabled = false; }
+}
+$("sendMessage").addEventListener("click", sendMessage);
+$("messageInput").addEventListener("keydown", event => {
+  if (event.key === "Enter") sendMessage();
+});
+
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+  if (!user) {
+    $("auth").classList.remove("hidden");
+    $("app").classList.add("hidden");
+    if (stopFriends) stopFriends();
+    if (stopRequests) stopRequests();
+    if (stopMessages) stopMessages();
+    selectedFriend = null;
+    $("messageInput").disabled = true;
+    $("sendMessage").disabled = true;
+    return;
+  }
+  $("auth").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("myUid").textContent = user.uid;
+  try {
+    const profileSnap = await get(ref(db, "publicProfiles/" + user.uid));
+    $("myName").textContent = profileSnap.exists()
+      ? "Username: " + profileSnap.val().username
+      : "Profile not found. Please contact the app administrator.";
+  } catch (error) { explainError(error); }
+  watchFriends();
+  watchRequests();
+});
+</script>
+</body>
+</html>
