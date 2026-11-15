@@ -1,112 +1,572 @@
-const $ = (id) => document.getElementById(id);
-const pages = ["home","chats","chatroom","friends","requests","groups","calls","voice-call","video-call","voice","media","profile","settings","account-settings","privacy","security","blocked","notifications","chat-settings","storage","forgot"];
-let isLogin = false;
-let currentUser = {name:"SD User", email:"demo@example.com"};
-let friends = [];
-let requests = [];
-let groups = [];
-let currentChat = "Friend";
-let toastTimer;
 
-function toast(message){
-  const el=$("toast"); if(!el) return;
-  el.textContent=message; el.classList.add("show");
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"),2400);
-}
-function openPage(name){
-  if(!pages.includes(name)) name="home";
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  const page=$("page-"+name); if(page) page.classList.add("active");
-  document.querySelectorAll("[data-page].nav-link").forEach(b=>b.classList.toggle("active",b.dataset.page===name));
-  const titles={"home":"Home","chats":"Messages","chatroom":"Private chat","friends":"Friends","requests":"Friend requests","groups":"Group chats","calls":"Calls","voice-call":"Voice call","video-call":"Video call","voice":"Voice messages","media":"Photos & videos","profile":"My profile","settings":"Settings","account-settings":"Account settings","privacy":"Privacy settings","security":"Security","blocked":"Blocked contacts","notifications":"Notifications","chat-settings":"Chat settings","storage":"Media & storage","forgot":"Forgot password"};
-  $("topTitle").textContent=titles[name]||"SD DOST CHAT";
-  document.querySelector(".sidebar")?.classList.remove("open");
-  if(name==="profile") updateProfile();
-  if(name==="friends") renderFriends();
-  if(name==="requests") renderRequests();
-  if(name==="groups") renderGroups();
-  if(name==="chats") renderChats();
-  window.scrollTo({top:0,behavior:"smooth"});
-}
-function updateProfile(){
-  const name=currentUser.name||"SD User", email=currentUser.email||"";
-  ["sideName","profileName","detailName"].forEach(id=>{if($(id)) $(id).textContent=name;});
-  ["profileEmail","detailEmail","accountEmail"].forEach(id=>{if($(id)) $(id).textContent=email;});
-  $("profileAvatar").textContent=name.slice(0,2).toUpperCase();
-  $("topTitle").textContent="My profile";
-  $("homeGreeting").textContent="Hello, "+name+"!";
-}
-function showApp(){
-  $("authScreen").classList.add("hidden"); $("appShell").classList.remove("hidden");
-  updateProfile(); openPage("home");
-}
-function showAuth(){
-  $("appShell").classList.add("hidden"); $("authScreen").classList.remove("hidden");
-}
-function setAuthMode(login){
-  isLogin=login;
-  $("signupFields").classList.toggle("hidden",login);
-  $("authSubmit").textContent=login?"Log in":"Create account";
-  $("toggleAuth").textContent=login?"Create a new account":"Already have an account? Log in";
-  $("password").autocomplete=login?"current-password":"new-password";
-  $("authMessage").textContent="";
-}
-$("toggleAuth").addEventListener("click",()=>setAuthMode(!isLogin));
-$("authSubmit").addEventListener("click",()=>{
-  const email=$("email").value.trim(), password=$("password").value, name=$("displayName").value.trim();
-  if(!email||!password||(!isLogin&&!name)){ $("authMessage").textContent="Please fill in all required fields."; return; }
-  if(password.length<6){ $("authMessage").textContent="Password must be at least 6 characters."; return; }
-  currentUser={name:isLogin?(name||email.split("@")[0]):name,email};
-  $("authMessage").textContent=""; showApp();
-  toast("Design preview opened. Firebase will be connected later.");
-});
-$("forgotPassword").addEventListener("click",()=>{
-  $("forgotEmail").value=$("email").value.trim(); showApp(); openPage("forgot");
-});
-$("forgotForm").addEventListener("submit",e=>{
-  e.preventDefault(); const email=$("forgotEmail").value.trim();
-  $("forgotFeedback").textContent=email?"Preview: password reset will be sent after Firebase connection.":"Enter your email address.";
-});
-$("logout").addEventListener("click",()=>{showAuth();setAuthMode(true);toast("Logged out of preview.");});
-$("changePassword").addEventListener("click",()=>{$("accountFeedback").textContent="Password reset will be connected with Firebase later.";});
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendPasswordResetEmail, signOut, onAuthStateChanged,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getDatabase, ref, set, get, push, onValue, update, remove,
+  query, limitToLast
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-document.addEventListener("click",e=>{
-  const target=e.target.closest("[data-page]");
-  if(target){ e.preventDefault(); openPage(target.dataset.page); }
-});
-$("mobileMenu").addEventListener("click",()=>document.querySelector(".sidebar").classList.toggle("open"));
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBjQ41eCIrZpli6oERkCGam4T7js7HxQsM",
+  authDomain: "sd-dost-chat.firebaseapp.com",
+  databaseURL: "https://sd-dost-chat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sd-dost-chat",
+  storageBucket: "sd-dost-chat.firebasestorage.app",
+  messagingSenderId: "828889822031",
+  appId: "1:828889822031:web:c9c0224384915d63b38b3a"
+};
 
-function renderFriends(){
-  $("friendCount").textContent=friends.length+" friends";
-  $("friendsList").innerHTML=friends.length?friends.map((f,i)=>`<div class="settings-row"><span class="avatar">${escapeHTML(f.slice(0,2).toUpperCase())}</span><span><b>${escapeHTML(f)}</b><small>Preview friend</small></span><button class="btn secondary" data-chat="${i}">Message</button></div>`).join(""):`<div class="empty-state compact"><div class="empty-symbol">♧</div><h3>No friends added</h3><p>Your accepted friends will appear here.</p></div>`;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+const $ = id => document.getElementById(id);
+
+let currentUser = null;
+let currentChatId = null;
+let currentGroupId = null;
+let authMode = "login";
+let activeListeners = [];
+
+function showToast(message) {
+  const el = $("toast");
+  if (el) {
+    el.textContent = message;
+    el.classList.remove("hidden");
+    setTimeout(() => el.classList.add("hidden"), 3000);
+  } else {
+    alert(message);
+  }
 }
-function renderRequests(){
-  $("requestList").innerHTML=requests.length?requests.map((r,i)=>`<div class="settings-row"><span class="avatar">${escapeHTML(r.slice(0,2).toUpperCase())}</span><span><b>${escapeHTML(r)}</b><small>Wants to connect</small></span><button class="btn primary" data-accept="${i}">Accept</button></div>`).join(""):`<div class="empty-state"><div class="empty-symbol">✉</div><h3>No new requests</h3><p>New friend invitations will appear here.</p></div>`;
+
+function listen(path, callback) {
+  const databaseRef = ref(db, path);
+  const unsubscribe = onValue(databaseRef, snapshot => callback(snapshot.val()));
+  activeListeners.push(unsubscribe);
+  return unsubscribe;
 }
-function renderGroups(){
-  $("groupList").innerHTML=groups.length?groups.map(g=>`<div class="settings-row"><span class="avatar">◎</span><span><b>${escapeHTML(g)}</b><small>Preview group</small></span><span class="status-pill">Created</span></div>`).join(""):`<div class="empty-state compact"><div class="empty-symbol">◎</div><h3>No groups yet</h3><p>Groups you create will appear here.</p></div>`;
+
+function clearListeners() {
+  activeListeners.forEach(unsubscribe => unsubscribe());
+  activeListeners = [];
 }
-function renderChats(){
-  $("chatList").innerHTML=friends.length?friends.map((f,i)=>`<button class="settings-row chat-open" data-chat="${i}"><span class="avatar">${escapeHTML(f.slice(0,2).toUpperCase())}</span><span><b>${escapeHTML(f)}</b><small>Tap to open private chat</small></span><i>›</i></button>`).join(""):`<div class="empty-state"><div class="empty-symbol">▤</div><h3>No conversations yet</h3><p>Add a friend to start a private conversation.</p><button class="btn primary" data-page="friends">Find friends</button></div>`;
+
+function safeText(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[char]);
 }
-$("friendForm").addEventListener("submit",e=>{
-  e.preventDefault(); const name=$("friendName").value.trim();
-  if(!name){$("friendFeedback").textContent="Enter a name first.";return;}
-  if(friends.includes(name)){ $("friendFeedback").textContent="This person is already in your preview friends list.";return;}
-  requests.push(name); $("friendName").value=""; $("friendFeedback").textContent="Demo request created. Open Friend requests to accept it."; toast("Friend request added to preview."); 
+
+// PAGE NAVIGATION
+function openPage(page) {
+  document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+  const selected = $("page-" + page);
+  if (selected) selected.classList.remove("hidden");
+
+  document.querySelectorAll("#tabs button, #tabs [data-page]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.page === page);
+  });
+}
+
+document.querySelectorAll("#tabs [data-page]").forEach(btn => {
+  btn.addEventListener("click", () => openPage(btn.dataset.page));
 });
-$("requestList").addEventListener("click",e=>{
-  const b=e.target.closest("[data-accept]"); if(!b)return;
-  const idx=Number(b.dataset.accept), name=requests.splice(idx,1)[0]; if(name&&!friends.includes(name))friends.push(name);
-  renderRequests(); toast(name+" added to your preview friends."); 
+
+// AUTH MODE
+$("switchAuth")?.addEventListener("click", () => {
+  authMode = authMode === "login" ? "signup" : "login";
+  if ($("authTitle")) $("authTitle").textContent =
+    authMode === "login" ? "Login" : "Create Account";
+  if ($("authBtn")) $("authBtn").textContent =
+    authMode === "login" ? "Login" : "Sign Up";
+  $("nameWrap")?.classList.toggle("hidden", authMode === "login");
+  if ($("switchAuth")) $("switchAuth").textContent =
+    authMode === "login" ? "Create new account" : "Already have an account? Login";
+  if ($("authMsg")) $("authMsg").textContent = "";
 });
-$("friendsList").addEventListener("click",e=>{
-  const b=e.target.closest("[data-chat]"); if(!b)return; startChat(friends[Number(b.dataset.chat)]);
+
+// LOGIN / SIGNUP
+$("authBtn")?.addEventListener("click", async () => {
+  const email = $("email")?.value.trim();
+  const password = $("password")?.value;
+  const name = $("name")?.value.trim();
+
+  if (!email || !password) {
+    showToast("Email اور Password درج کریں");
+    return;
+  }
+
+  try {
+    if (authMode === "signup") {
+      if (!name) return showToast("اپنا نام درج کریں");
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(result.user, { displayName: name });
+      await set(ref(db, "publicProfiles/" + result.user.uid), {
+        name,
+        uid: result.user.uid,
+        createdAt: Date.now()
+      });
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+  } catch (error) {
+    showToast(error.message);
+  }
 });
-$("chatList").addEventListener("click",e=>{
-  const b=e.target.closest("[data-chat]"); if(!b)return; startChat(friends[Number(b.dataset.chat)]);
+
+// FORGOT PASSWORD
+$("forgotBtn")?.addEventListener("click", async () => {
+  const email = $("email")?.value.trim();
+  if (!email) return showToast("پہلے Email درج کریں");
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showToast("Password reset email بھیج دی گئی");
+  } catch (error) {
+    showToast(error.message);
+  }
 });
-function startChat(name){
-  currentChat=name||"Friend"; $("chatRoomTitle").textContent=currentChat; $("chatRoomName").textContent=currentChat; openPage("chatroom");
+
+// AUTH STATE
+onAuthStateChanged(auth, async user => {
+  clearListeners();
+  currentUser = user;
+
+  $("authScreen")?.classList.toggle("hidden", !!user);
+  $("appScreen")?.classList.toggle("hidden", !user);
+
+  if (!user) return;
+
+  $("headerUser") && ($("headerUser").textContent = user.displayName || "SD User");
+  $("profileName") && ($("profileName").textContent = user.displayName || "User");
+  $("profileEmail") && ($("profileEmail").textContent = user.email || "");
+  $("profileUid") && ($("profileUid").textContent = user.uid);
+  $("avatar") && ($("avatar").textContent = (user.displayName || "U")[0].toUpperCase());
+
+  const profileRef = ref(db, "publicProfiles/" + user.uid);
+  const profile = await get(profileRef);
+  if (!profile.exists()) {
+    await set(profileRef, {
+      name: user.displayName || "User",
+      uid: user.uid,
+      createdAt: Date.now()
+    });
+  }
+
+  loadFriends();
+  loadRequests();
+  loadGroups();
+  openPage("chats");
+});
+
+// LOGOUT
+$("logout")?.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    showToast("Logged out");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+// COPY UID
+$("copyUid")?.addEventListener("click", async () => {
+  if (!currentUser) return;
+  try {
+    await navigator.clipboard.writeText(currentUser.uid);
+    showToast("UID copied");
+  } catch {
+    showToast("UID: " + currentUser.uid);
+  }
+});
+
+// EDIT PROFILE
+$("saveProfile")?.addEventListener("click", async () => {
+  if (!currentUser) return;
+  const name = $("editProfileName")?.value.trim();
+  if (!name) return showToast("Name درج کریں");
+
+  try {
+    await updateProfile(currentUser, { displayName: name });
+    await update(ref(db, "publicProfiles/" + currentUser.uid), { name });
+    $("profileName").textContent = name;
+    $("headerUser").textContent = name;
+    showToast("Profile updated");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+// SEND FRIEND REQUEST
+$("addFriend")?.addEventListener("click", async () => {
+  if (!currentUser) return;
+  const friendUid = $("friendUid")?.value.trim();
+
+  if (!friendUid || friendUid === currentUser.uid) {
+    return showToast("درست دوست کا UID درج کریں");
+  }
+
+  try {
+    const profileSnap = await get(ref(db, "publicProfiles/" + friendUid));
+    if (!profileSnap.exists()) return showToast("یہ UID نہیں ملا");
+
+    const alreadyFriend = await get(ref(db, `friends/${currentUser.uid}/${friendUid}`));
+    if (alreadyFriend.exists()) return showToast("یہ پہلے سے دوست ہے");
+
+    await set(ref(db, `friendRequests/${friendUid}/${currentUser.uid}`), {
+      uid: currentUser.uid,
+      name: currentUser.displayName || "User",
+      createdAt: Date.now()
+    });
+
+    $("friendUid").value = "";
+    showToast("Friend request sent");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+// LOAD FRIENDS
+function loadFriends() {
+  listen("friends/" + currentUser.uid, async data => {
+    const list = $("friendsList");
+    const chats = $("chatList");
+    if (!list || !chats) return;
+
+    list.innerHTML = "";
+    chats.innerHTML = "";
+
+    if (!data) {
+      list.textContent = "No friends yet";
+      chats.textContent = "Add friends to start chatting";
+      return;
+    }
+
+    for (const uid of Object.keys(data)) {
+      const snap = await get(ref(db, "publicProfiles/" + uid));
+      const person = snap.val() || { name: data[uid].name || "Friend" };
+
+      const friendButton = document.createElement("button");
+      friendButton.textContent = person.name + " · Open chat";
+      friendButton.addEventListener("click", () => startChat(uid, person.name));
+      list.appendChild(friendButton);
+
+      const chatButton = document.createElement("button");
+      chatButton.textContent = person.name;
+      chatButton.addEventListener("click", () => startChat(uid, person.name));
+      chats.appendChild(chatButton);
+    }
+  });
 }
-function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+// LOAD FRIEND REQUESTS
+function loadRequests() {
+  listen("friendRequests/" + currentUser.uid, data => {
+    const list = $("requestsList");
+    if (!list) return;
+    list.innerHTML = "";
+
+    if (!data) {
+      list.textContent = "No pending requests";
+      return;
+    }
+
+    Object.entries(data).forEach(([senderUid, request]) => {
+      const row = document.createElement("div");
+      const name = document.createElement("span");
+      name.textContent = request.name || "User";
+
+      const accept = document.createElement("button");
+      accept.textContent = "Accept";
+      accept.addEventListener("click", () => acceptRequest(senderUid, request.name));
+
+      const reject = document.createElement("button");
+      reject.textContent = "Reject";
+      reject.addEventListener("click", () =>
+        remove(ref(db, `friendRequests/${currentUser.uid}/${senderUid}`))
+          .then(() => showToast("Request rejected"))
+          .catch(error => showToast(error.message))
+      );
+
+      row.append(name, accept, reject);
+      list.appendChild(row);
+    });
+  });
+}
+
+async function acceptRequest(uid, name) {
+  try {
+    const myName = currentUser.displayName || "User";
+    const updates = {};
+    updates[`friends/${currentUser.uid}/${uid}`] = {
+      uid, name: name || "Friend", since: Date.now()
+    };
+    updates[`friends/${uid}/${currentUser.uid}`] = {
+      uid: currentUser.uid, name: myName, since: Date.now()
+    };
+    updates[`friendRequests/${currentUser.uid}/${uid}`] = null;
+
+    await update(ref(db), updates);
+    showToast("Friend added");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+// PRIVATE CHAT
+function makeChatId(uid1, uid2) {
+  return [uid1, uid2].sort().join("_");
+}
+
+async function startChat(friendUid, friendName) {
+  currentChatId = makeChatId(currentUser.uid, friendUid);
+  currentGroupId = null;
+
+  $("activeChat")?.classList.remove("hidden");
+  $("chatTitle") && ($("chatTitle").textContent = friendName);
+  openPage("chats");
+
+  const chatId = currentChatId;
+  const updates = {};
+  updates[`chats/${chatId}/members/${currentUser.uid}`] = true;
+  updates[`chats/${chatId}/members/${friendUid}`] = true;
+  updates[`chatMembers/${currentUser.uid}/${chatId}`] = true;
+  updates[`chatMembers/${friendUid}/${chatId}`] = true;
+
+  try {
+    await update(ref(db), updates);
+    loadMessages(chatId, "messages");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+function loadMessages(chatId, messageNode) {
+  clearMessageListener();
+  const messageRef = query(
+    ref(db, `chats/${chatId}/${messageNode}`),
+    limitToLast(100)
+  );
+
+  const unsubscribe = onValue(messageRef, snapshot => {
+    const box = $("messages");
+    if (!box) return;
+    box.innerHTML = "";
+
+    snapshot.forEach(child => {
+      const msg = child.val();
+      const row = document.createElement("div");
+      row.className = msg.uid === currentUser.uid ? "my-message" : "other-message";
+      row.textContent = (msg.name || "User") + ": " + (msg.text || "");
+      box.appendChild(row);
+    });
+
+    box.scrollTop = box.scrollHeight;
+  });
+
+  messageUnsubscribe = unsubscribe;
+}
+
+let messageUnsubscribe = null;
+function clearMessageListener() {
+  if (messageUnsubscribe) {
+    messageUnsubscribe();
+    messageUnsubscribe = null;
+  }
+}
+
+async function sendChatMessage() {
+  const text = $("messageInput")?.value.trim();
+  if (!text || !currentChatId) return;
+
+  try {
+    await push(ref(db, `chats/${currentChatId}/messages`), {
+      uid: currentUser.uid,
+      name: currentUser.displayName || "User",
+      text,
+      createdAt: Date.now()
+    });
+    $("messageInput").value = "";
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+$("sendMessage")?.addEventListener("click", sendChatMessage);
+$("messageInput")?.addEventListener("keydown", event => {
+  if (event.key === "Enter") sendChatMessage();
+});
+
+$("backChats")?.addEventListener("click", () => {
+  $("activeChat")?.classList.add("hidden");
+  currentChatId = null;
+  clearMessageListener();
+});
+
+// GROUPS
+$("createGroup")?.addEventListener("click", async () => {
+  const name = $("groupName")?.value.trim();
+  const memberText = $("groupMembers")?.value.trim();
+  if (!name) return showToast("Group name درج کریں");
+
+  try {
+    const members = new Set([currentUser.uid]);
+    if (memberText) {
+      memberText.split(",").map(x => x.trim()).filter(Boolean)
+        .forEach(uid => members.add(uid));
+    }
+
+    for (const uid of members) {
+      if (uid === currentUser.uid) continue;
+      const isFriend = await get(ref(db, `friends/${currentUser.uid}/${uid}`));
+      if (!isFriend.exists()) throw new Error("صرف اپنے friends کو group میں شامل کریں");
+    }
+
+    const groupRef = push(ref(db, "groups"));
+    const groupId = groupRef.key;
+    const memberMap = {};
+    members.forEach(uid => memberMap[uid] = true);
+
+    await set(groupRef, {
+      name,
+      owner: currentUser.uid,
+      members: memberMap,
+      createdAt: Date.now()
+    });
+
+    for (const uid of members) {
+      await set(ref(db, `userGroups/${uid}/${groupId}`), true);
+    }
+
+    $("groupName").value = "";
+    $("groupMembers").value = "";
+    showToast("Group created");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+function loadGroups() {
+  listen("userGroups/" + currentUser.uid, async data => {
+    const list = $("groupList");
+    if (!list) return;
+    list.innerHTML = "";
+
+    if (!data) {
+      list.textContent = "No groups yet";
+      return;
+    }
+
+    for (const groupId of Object.keys(data)) {
+      const snap = await get(ref(db, "groups/" + groupId));
+      const group = snap.val();
+      if (!group) continue;
+
+      const btn = document.createElement("button");
+      btn.textContent = group.name || "Group";
+      btn.addEventListener("click", () => openGroup(groupId, group.name));
+      list.appendChild(btn);
+    }
+  });
+}
+
+async function openGroup(groupId, name) {
+  currentGroupId = groupId;
+  currentChatId = null;
+  $("activeGroup")?.classList.remove("hidden");
+  $("groupTitle") && ($("groupTitle").textContent = name || "Group");
+  openPage("groups");
+  clearMessageListener();
+
+  const unsubscribe = onValue(
+    query(ref(db, `groups/${groupId}/messages`), limitToLast(100)),
+    snapshot => {
+      const box = $("groupMessages");
+      if (!box) return;
+      box.innerHTML = "";
+      snapshot.forEach(child => {
+        const msg = child.val();
+        const row = document.createElement("div");
+        row.textContent = (msg.name || "User") + ": " + (msg.text || "");
+        box.appendChild(row);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+  );
+  messageUnsubscribe = unsubscribe;
+}
+
+$("sendGroupMessage")?.addEventListener("click", async () => {
+  const text = $("groupMessageInput")?.value.trim();
+  if (!text || !currentGroupId) return;
+
+  try {
+    await push(ref(db, `groups/${currentGroupId}/messages`), {
+      uid: currentUser.uid,
+      name: currentUser.displayName || "User",
+      text,
+      createdAt: Date.now()
+    });
+    $("groupMessageInput").value = "";
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+// BACK BUTTONS / BASIC PLACEHOLDERS
+$("recordBtn")?.addEventListener("click", () =>
+  showToast("Voice messages کا کوڈ اگلے مرحلے میں شامل ہوگا")
+);
+$("attachBtn")?.addEventListener("click", () =>
+  $("mediaPicker")?.click()
+);
+$("voiceCallBtn")?.addEventListener("click", () =>
+  showToast("Voice calling اگلے مرحلے میں webrtc.js سے جوڑی جائے گی")
+);
+$("videoCallBtn")?.addEventListener("click", () =>
+  showToast("Video calling اگلے مرحلے میں webrtc.js سے جوڑی جائے گی")
+);
+$("startRecording")?.addEventListener("click", () =>
+  showToast("Voice recording اگلے مرحلے میں شامل ہوگی")
+);
+$("stopRecording")?.addEventListener("click", () =>
+  showToast("Recording ابھی فعال نہیں")
+);
+$("savePrivacy")?.addEventListener("click", () =>
+  showToast("Privacy settings محفوظ کرنے کا اگلا مرحلہ باقی ہے")
+);
+$("saveChatSettings")?.addEventListener("click", () =>
+  showToast("Chat settings محفوظ کرنے کا اگلا مرحلہ باقی ہے")
+);
+
+$("incomingAccept")?.addEventListener("click", () =>
+  showToast("Calling ابھی setup نہیں ہوئی")
+);
+$("incomingReject")?.addEventListener("click", () =>
+  $("incomingCallBox")?.classList.add("hidden")
+);
+
+$("acceptVoiceCall")?.addEventListener("click", () =>
+  showToast("Voice calling ابھی setup نہیں ہوئی")
+);
+$("rejectVoiceCall")?.addEventListener("click", () =>
+  openPage("calls")
+);
+$("endVoiceCall")?.addEventListener("click", () =>
+  openPage("calls")
+);
+$("acceptVideoCall")?.addEventListener("click", () =>
+  showToast("Video calling ابھی setup نہیں ہوئی")
+);
+$("rejectVideoCall")?.addEventListener("click", () =>
+  openPage("calls")
+);
+$("endVideoCall")?.addEventListener("click", () =>
+  openPage("calls")
+);
+
+console.log("SD DOST CHAT app.js loaded");
