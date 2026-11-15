@@ -1,16 +1,20 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  sendPasswordResetEmail, signOut, onAuthStateChanged,
-  updateProfile
+  getAuth, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, sendPasswordResetEmail,
+  signOut, onAuthStateChanged, updateProfile
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getDatabase, ref, set, get, push, onValue, update, remove,
-  query, limitToLast
+  getDatabase, ref, set, get, push, update, remove,
+  onValue, query, limitToLast
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// Firebase Configuration
+import {
+  startCall, listenForCalls, acceptCall, rejectCall,
+  endCall, toggleMute, toggleCamera
+} from "./webrtc.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBjQ41eCIrZpli6oERkCGam4T7js7HxQsM",
   authDomain: "sd-dost-chat.firebaseapp.com",
@@ -26,213 +30,295 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const $ = id => document.getElementById(id);
 
-let currentUser = null;
-let currentChatId = null;
-let currentGroupId = null;
+let user = null;
+let friendUid = null;
+let friendName = "";
+let chatId = null;
+let groupId = null;
+let messageListener = null;
+let recording = null;
+let recordedChunks = [];
+let localAudioUrl = null;
 let authMode = "login";
-let activeListeners = [];
 
-function showToast(message) {
+function toast(message) {
   const el = $("toast");
-  if (el) {
-    el.textContent = message;
-    el.classList.remove("hidden");
-    setTimeout(() => el.classList.add("hidden"), 3000);
-  } else {
+  if (!el) {
     alert(message);
+    return;
   }
+  el.textContent = message;
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 3000);
 }
 
-function listen(path, callback) {
-  const databaseRef = ref(db, path);
-  const unsubscribe = onValue(databaseRef, snapshot => callback(snapshot.val()));
-  activeListeners.push(unsubscribe);
-  return unsubscribe;
-}
+function showPage(name) {
+  document.querySelectorAll(".page").forEach(page =>
+    page.classList.add("hidden")
+  );
 
-function clearListeners() {
-  activeListeners.forEach(unsubscribe => unsubscribe());
-  activeListeners = [];
-}
+  $("page-" + name)?.classList.remove("hidden");
 
-function safeText(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;",
-    '"': "&quot;", "'": "&#39;"
-  })[char]);
-}
-
-// PAGE NAVIGATION
-function openPage(page) {
-  document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
-  const selected = $("page-" + page);
-  if (selected) selected.classList.remove("hidden");
-
-  document.querySelectorAll("#tabs button, #tabs [data-page]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.page === page);
+  document.querySelectorAll("#tabs [data-page]").forEach(button => {
+    button.classList.toggle("active", button.dataset.page === name);
   });
 }
 
-document.querySelectorAll("#tabs [data-page]").forEach(btn => {
-  btn.addEventListener("click", () => openPage(btn.dataset.page));
+function stopMessageListener() {
+  if (messageListener) {
+    messageListener();
+    messageListener = null;
+  }
+}
+
+function chatKey(a, b) {
+  return [a, b].sort().join("_");
+}
+
+function displayMessages(path, boxId) {
+  stopMessageListener();
+
+  messageListener = onValue(
+    query(ref(db, path), limitToLast(100)),
+    snapshot => {
+      const box = $(boxId);
+      if (!box) return;
+
+      box.innerHTML = "";
+
+      snapshot.forEach(item => {
+        const msg = item.val();
+        const row = document.createElement("div");
+        row.className = msg.uid === user.uid
+          ? "my-message"
+          : "other-message";
+
+        const name = document.createElement("strong");
+        name.textContent = (msg.name || "User") + ": ";
+
+        const text = document.createElement("span");
+        text.textContent = msg.text || "";
+
+        row.append(name, text);
+        box.appendChild(row);
+      });
+
+      box.scrollTop = box.scrollHeight;
+    },
+    error => toast(error.message)
+  );
+}
+
+// NAVIGATION
+document.querySelectorAll("#tabs [data-page]").forEach(button => {
+  button.addEventListener("click", () => {
+    showPage(button.dataset.page);
+  });
 });
 
-// AUTH MODE
+// LOGIN / SIGNUP MODE
 $("switchAuth")?.addEventListener("click", () => {
   authMode = authMode === "login" ? "signup" : "login";
-  if ($("authTitle")) $("authTitle").textContent =
-    authMode === "login" ? "Login" : "Create Account";
-  if ($("authBtn")) $("authBtn").textContent =
-    authMode === "login" ? "Login" : "Sign Up";
+
+  if ($("authTitle")) {
+    $("authTitle").textContent =
+      authMode === "login" ? "Login" : "Create Account";
+  }
+
+  if ($("authBtn")) {
+    $("authBtn").textContent =
+      authMode === "login" ? "Login" : "Sign Up";
+  }
+
   $("nameWrap")?.classList.toggle("hidden", authMode === "login");
-  if ($("switchAuth")) $("switchAuth").textContent =
-    authMode === "login" ? "Create new account" : "Already have an account? Login";
-  if ($("authMsg")) $("authMsg").textContent = "";
+
+  if ($("switchAuth")) {
+    $("switchAuth").textContent =
+      authMode === "login"
+        ? "Create new account"
+        : "Already have an account? Login";
+  }
 });
 
-// LOGIN / SIGNUP
+// AUTH
 $("authBtn")?.addEventListener("click", async () => {
   const email = $("email")?.value.trim();
   const password = $("password")?.value;
   const name = $("name")?.value.trim();
 
-  if (!email || !password) {
-    showToast("Email اور Password درج کریں");
-    return;
-  }
+  if (!email || !password) return toast("Email اور Password درج کریں");
+  if (password.length < 6) return toast("Password کم از کم 6 حروف کا ہو");
+
+  const button = $("authBtn");
+  button.disabled = true;
 
   try {
     if (authMode === "signup") {
-      if (!name) return showToast("اپنا نام درج کریں");
-      const result = await createUserWithEmailAndPassword(auth, email, password);
+      if (!name) throw new Error("اپنا نام درج کریں");
+
+      const result = await createUserWithEmailAndPassword(
+        auth, email, password
+      );
+
       await updateProfile(result.user, { displayName: name });
+
       await set(ref(db, "publicProfiles/" + result.user.uid), {
         name,
         uid: result.user.uid,
         createdAt: Date.now()
       });
+
     } else {
       await signInWithEmailAndPassword(auth, email, password);
     }
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
+  } finally {
+    button.disabled = false;
   }
 });
 
 // FORGOT PASSWORD
 $("forgotBtn")?.addEventListener("click", async () => {
   const email = $("email")?.value.trim();
-  if (!email) return showToast("پہلے Email درج کریں");
+  if (!email) return toast("Email درج کریں");
+
   try {
     await sendPasswordResetEmail(auth, email);
-    showToast("Password reset email بھیج دی گئی");
+    toast("Password reset email بھیج دی گئی");
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 });
 
 // AUTH STATE
-onAuthStateChanged(auth, async user => {
-  clearListeners();
-  currentUser = user;
+onAuthStateChanged(auth, async currentUser => {
+  stopMessageListener();
+  user = currentUser;
 
   $("authScreen")?.classList.toggle("hidden", !!user);
   $("appScreen")?.classList.toggle("hidden", !user);
 
   if (!user) return;
 
-  $("headerUser") && ($("headerUser").textContent = user.displayName || "SD User");
-  $("profileName") && ($("profileName").textContent = user.displayName || "User");
-  $("profileEmail") && ($("profileEmail").textContent = user.email || "");
-  $("profileUid") && ($("profileUid").textContent = user.uid);
-  $("avatar") && ($("avatar").textContent = (user.displayName || "U")[0].toUpperCase());
+  window.currentUserUid = user.uid;
 
-  const profileRef = ref(db, "publicProfiles/" + user.uid);
-  const profile = await get(profileRef);
-  if (!profile.exists()) {
-    await set(profileRef, {
-      name: user.displayName || "User",
-      uid: user.uid,
-      createdAt: Date.now()
-    });
+  $("headerUser") && (
+    $("headerUser").textContent = user.displayName || "SD User"
+  );
+
+  $("profileName") && (
+    $("profileName").textContent = user.displayName || "User"
+  );
+
+  $("profileEmail") && (
+    $("profileEmail").textContent = user.email || ""
+  );
+
+  $("profileUid") && (
+    $("profileUid").textContent = user.uid
+  );
+
+  $("avatar") && (
+    $("avatar").textContent =
+      (user.displayName || "U").charAt(0).toUpperCase()
+  );
+
+  try {
+    const profileRef = ref(db, "publicProfiles/" + user.uid);
+    const profile = await get(profileRef);
+
+    if (!profile.exists()) {
+      await set(profileRef, {
+        name: user.displayName || "User",
+        uid: user.uid,
+        createdAt: Date.now()
+      });
+    }
+
+    listenForCalls(user.uid);
+    loadFriends();
+    loadRequests();
+    loadGroups();
+    loadBlocked();
+    loadProfileSettings();
+    showPage("chats");
+  } catch (error) {
+    toast("Database: " + error.message);
   }
-
-  loadFriends();
-  loadRequests();
-  loadGroups();
-  openPage("chats");
 });
 
 // LOGOUT
 $("logout")?.addEventListener("click", async () => {
   try {
+    stopMessageListener();
     await signOut(auth);
-    showToast("Logged out");
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 });
 
-// COPY UID
+// PROFILE
 $("copyUid")?.addEventListener("click", async () => {
-  if (!currentUser) return;
+  if (!user) return;
+
   try {
-    await navigator.clipboard.writeText(currentUser.uid);
-    showToast("UID copied");
+    await navigator.clipboard.writeText(user.uid);
+    toast("UID copied");
   } catch {
-    showToast("UID: " + currentUser.uid);
+    toast("Your UID: " + user.uid);
   }
 });
 
-// EDIT PROFILE
 $("saveProfile")?.addEventListener("click", async () => {
-  if (!currentUser) return;
   const name = $("editProfileName")?.value.trim();
-  if (!name) return showToast("Name درج کریں");
+  if (!name) return toast("Name درج کریں");
 
   try {
-    await updateProfile(currentUser, { displayName: name });
-    await update(ref(db, "publicProfiles/" + currentUser.uid), { name });
+    await updateProfile(user, { displayName: name });
+    await update(ref(db, "publicProfiles/" + user.uid), { name });
+
     $("profileName").textContent = name;
     $("headerUser").textContent = name;
-    showToast("Profile updated");
+    $("avatar").textContent = name.charAt(0).toUpperCase();
+
+    toast("Profile updated");
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 });
 
-// SEND FRIEND REQUEST
+// ADD FRIEND
 $("addFriend")?.addEventListener("click", async () => {
-  if (!currentUser) return;
-  const friendUid = $("friendUid")?.value.trim();
+  const uid = $("friendUid")?.value.trim();
 
-  if (!friendUid || friendUid === currentUser.uid) {
-    return showToast("درست دوست کا UID درج کریں");
+  if (!uid || uid === user.uid) {
+    return toast("درست Friend UID درج کریں");
   }
 
   try {
-    const profileSnap = await get(ref(db, "publicProfiles/" + friendUid));
-    if (!profileSnap.exists()) return showToast("یہ UID نہیں ملا");
+    const profile = await get(ref(db, "publicProfiles/" + uid));
+    if (!profile.exists()) throw new Error("User نہیں ملا");
 
-    const alreadyFriend = await get(ref(db, `friends/${currentUser.uid}/${friendUid}`));
-    if (alreadyFriend.exists()) return showToast("یہ پہلے سے دوست ہے");
+    const already = await get(ref(db, `friends/${user.uid}/${uid}`));
+    if (already.exists()) throw new Error("یہ پہلے سے دوست ہے");
 
-    await set(ref(db, `friendRequests/${friendUid}/${currentUser.uid}`), {
-      uid: currentUser.uid,
-      name: currentUser.displayName || "User",
+    await set(ref(db, `friendRequests/${uid}/${user.uid}`), {
+      uid: user.uid,
+      name: user.displayName || "User",
       createdAt: Date.now()
     });
 
     $("friendUid").value = "";
-    showToast("Friend request sent");
+    toast("Friend request sent");
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 });
 
-// LOAD FRIENDS
+// FRIENDS
 function loadFriends() {
-  listen("friends/" + currentUser.uid, async data => {
+  onValue(ref(db, "friends/" + user.uid), async snapshot => {
     const list = $("friendsList");
     const chats = $("chatList");
     if (!list || !chats) return;
@@ -240,57 +326,67 @@ function loadFriends() {
     list.innerHTML = "";
     chats.innerHTML = "";
 
-    if (!data) {
+    if (!snapshot.exists()) {
       list.textContent = "No friends yet";
       chats.textContent = "Add friends to start chatting";
       return;
     }
 
-    for (const uid of Object.keys(data)) {
-      const snap = await get(ref(db, "publicProfiles/" + uid));
-      const person = snap.val() || { name: data[uid].name || "Friend" };
+    for (const uid of Object.keys(snapshot.val())) {
+      const profile = await get(ref(db, "publicProfiles/" + uid));
+      const person = profile.val() || { name: "Friend" };
 
-      const friendButton = document.createElement("button");
-      friendButton.textContent = person.name + " · Open chat";
-      friendButton.addEventListener("click", () => startChat(uid, person.name));
-      list.appendChild(friendButton);
+      const button = document.createElement("button");
+      button.textContent = person.name || "Friend";
+      button.addEventListener("click", () =>
+        openChat(uid, person.name || "Friend")
+      );
 
-      const chatButton = document.createElement("button");
-      chatButton.textContent = person.name;
-      chatButton.addEventListener("click", () => startChat(uid, person.name));
+      list.appendChild(button);
+
+      const chatButton = button.cloneNode(true);
+      chatButton.addEventListener("click", () =>
+        openChat(uid, person.name || "Friend")
+      );
       chats.appendChild(chatButton);
     }
   });
 }
 
-// LOAD FRIEND REQUESTS
+// FRIEND REQUESTS
 function loadRequests() {
-  listen("friendRequests/" + currentUser.uid, data => {
+  onValue(ref(db, "friendRequests/" + user.uid), snapshot => {
     const list = $("requestsList");
     if (!list) return;
+
     list.innerHTML = "";
 
-    if (!data) {
+    if (!snapshot.exists()) {
       list.textContent = "No pending requests";
       return;
     }
 
-    Object.entries(data).forEach(([senderUid, request]) => {
+    snapshot.forEach(item => {
+      const uid = item.key;
+      const request = item.val();
+
       const row = document.createElement("div");
       const name = document.createElement("span");
       name.textContent = request.name || "User";
 
       const accept = document.createElement("button");
       accept.textContent = "Accept";
-      accept.addEventListener("click", () => acceptRequest(senderUid, request.name));
+      accept.addEventListener("click", () => acceptFriend(uid, request.name));
 
       const reject = document.createElement("button");
       reject.textContent = "Reject";
-      reject.addEventListener("click", () =>
-        remove(ref(db, `friendRequests/${currentUser.uid}/${senderUid}`))
-          .then(() => showToast("Request rejected"))
-          .catch(error => showToast(error.message))
-      );
+      reject.addEventListener("click", async () => {
+        try {
+          await remove(ref(db, `friendRequests/${user.uid}/${uid}`));
+        } catch (error) {
+          toast(error.message);
+        }
+      });
 
       row.append(name, accept, reject);
       list.appendChild(row);
@@ -298,275 +394,416 @@ function loadRequests() {
   });
 }
 
-async function acceptRequest(uid, name) {
+async function acceptFriend(uid, name) {
   try {
-    const myName = currentUser.displayName || "User";
     const updates = {};
-    updates[`friends/${currentUser.uid}/${uid}`] = {
-      uid, name: name || "Friend", since: Date.now()
+
+    updates[`friends/${user.uid}/${uid}`] = {
+      uid,
+      name: name || "Friend",
+      since: Date.now()
     };
-    updates[`friends/${uid}/${currentUser.uid}`] = {
-      uid: currentUser.uid, name: myName, since: Date.now()
+
+    updates[`friends/${uid}/${user.uid}`] = {
+      uid: user.uid,
+      name: user.displayName || "User",
+      since: Date.now()
     };
-    updates[`friendRequests/${currentUser.uid}/${uid}`] = null;
+
+    updates[`friendRequests/${user.uid}/${uid}`] = null;
 
     await update(ref(db), updates);
-    showToast("Friend added");
+    toast("Friend added");
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 }
 
 // PRIVATE CHAT
-function makeChatId(uid1, uid2) {
-  return [uid1, uid2].sort().join("_");
-}
-
-async function startChat(friendUid, friendName) {
-  currentChatId = makeChatId(currentUser.uid, friendUid);
-  currentGroupId = null;
+async function openChat(uid, name) {
+  friendUid = uid;
+  friendName = name;
+  chatId = chatKey(user.uid, uid);
+  groupId = null;
 
   $("activeChat")?.classList.remove("hidden");
-  $("chatTitle") && ($("chatTitle").textContent = friendName);
-  openPage("chats");
-
-  const chatId = currentChatId;
-  const updates = {};
-  updates[`chats/${chatId}/members/${currentUser.uid}`] = true;
-  updates[`chats/${chatId}/members/${friendUid}`] = true;
-  updates[`chatMembers/${currentUser.uid}/${chatId}`] = true;
-  updates[`chatMembers/${friendUid}/${chatId}`] = true;
+  $("activeGroup")?.classList.add("hidden");
+  $("chatTitle") && ($("chatTitle").textContent = name);
 
   try {
+    const updates = {};
+    updates[`chats/${chatId}/members/${user.uid}`] = true;
+    updates[`chats/${chatId}/members/${uid}`] = true;
+    updates[`chatMembers/${user.uid}/${chatId}`] = true;
+    updates[`chatMembers/${uid}/${chatId}`] = true;
+
     await update(ref(db), updates);
-    loadMessages(chatId, "messages");
+    displayMessages(`chats/${chatId}/messages`, "messages");
+    showPage("chats");
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 }
 
-function loadMessages(chatId, messageNode) {
-  clearMessageListener();
-  const messageRef = query(
-    ref(db, `chats/${chatId}/${messageNode}`),
-    limitToLast(100)
-  );
-
-  const unsubscribe = onValue(messageRef, snapshot => {
-    const box = $("messages");
-    if (!box) return;
-    box.innerHTML = "";
-
-    snapshot.forEach(child => {
-      const msg = child.val();
-      const row = document.createElement("div");
-      row.className = msg.uid === currentUser.uid ? "my-message" : "other-message";
-      row.textContent = (msg.name || "User") + ": " + (msg.text || "");
-      box.appendChild(row);
-    });
-
-    box.scrollTop = box.scrollHeight;
-  });
-
-  messageUnsubscribe = unsubscribe;
-}
-
-let messageUnsubscribe = null;
-function clearMessageListener() {
-  if (messageUnsubscribe) {
-    messageUnsubscribe();
-    messageUnsubscribe = null;
-  }
-}
-
-async function sendChatMessage() {
+async function sendPrivateMessage() {
   const text = $("messageInput")?.value.trim();
-  if (!text || !currentChatId) return;
+  if (!text || !chatId) return;
 
   try {
-    await push(ref(db, `chats/${currentChatId}/messages`), {
-      uid: currentUser.uid,
-      name: currentUser.displayName || "User",
+    await push(ref(db, `chats/${chatId}/messages`), {
+      uid: user.uid,
+      name: user.displayName || "User",
       text,
       createdAt: Date.now()
     });
+
     $("messageInput").value = "";
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 }
 
-$("sendMessage")?.addEventListener("click", sendChatMessage);
+$("sendMessage")?.addEventListener("click", sendPrivateMessage);
 $("messageInput")?.addEventListener("keydown", event => {
-  if (event.key === "Enter") sendChatMessage();
+  if (event.key === "Enter") sendPrivateMessage();
 });
 
 $("backChats")?.addEventListener("click", () => {
+  stopMessageListener();
+  chatId = null;
+  friendUid = null;
   $("activeChat")?.classList.add("hidden");
-  currentChatId = null;
-  clearMessageListener();
 });
 
 // GROUPS
 $("createGroup")?.addEventListener("click", async () => {
   const name = $("groupName")?.value.trim();
-  const memberText = $("groupMembers")?.value.trim();
-  if (!name) return showToast("Group name درج کریں");
+  const rawMembers = $("groupMembers")?.value.trim();
+
+  if (!name) return toast("Group name درج کریں");
 
   try {
-    const members = new Set([currentUser.uid]);
-    if (memberText) {
-      memberText.split(",").map(x => x.trim()).filter(Boolean)
+    const members = new Set([user.uid]);
+
+    if (rawMembers) {
+      rawMembers.split(",").map(x => x.trim()).filter(Boolean)
         .forEach(uid => members.add(uid));
     }
 
     for (const uid of members) {
-      if (uid === currentUser.uid) continue;
-      const isFriend = await get(ref(db, `friends/${currentUser.uid}/${uid}`));
-      if (!isFriend.exists()) throw new Error("صرف اپنے friends کو group میں شامل کریں");
+      if (uid === user.uid) continue;
+
+      const check = await get(ref(db, `friends/${user.uid}/${uid}`));
+      if (!check.exists()) {
+        throw new Error("صرف اپنے friends کو شامل کریں");
+      }
     }
 
     const groupRef = push(ref(db, "groups"));
-    const groupId = groupRef.key;
     const memberMap = {};
+
     members.forEach(uid => memberMap[uid] = true);
 
     await set(groupRef, {
       name,
-      owner: currentUser.uid,
+      owner: user.uid,
       members: memberMap,
       createdAt: Date.now()
     });
 
     for (const uid of members) {
-      await set(ref(db, `userGroups/${uid}/${groupId}`), true);
+      await set(ref(db, `userGroups/${uid}/${groupRef.key}`), true);
     }
 
     $("groupName").value = "";
     $("groupMembers").value = "";
-    showToast("Group created");
+    toast("Group created");
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 });
 
 function loadGroups() {
-  listen("userGroups/" + currentUser.uid, async data => {
+  onValue(ref(db, "userGroups/" + user.uid), async snapshot => {
     const list = $("groupList");
     if (!list) return;
+
     list.innerHTML = "";
 
-    if (!data) {
+    if (!snapshot.exists()) {
       list.textContent = "No groups yet";
       return;
     }
 
-    for (const groupId of Object.keys(data)) {
-      const snap = await get(ref(db, "groups/" + groupId));
-      const group = snap.val();
-      if (!group) continue;
+    for (const id of Object.keys(snapshot.val())) {
+      const result = await get(ref(db, "groups/" + id));
+      if (!result.exists()) continue;
 
-      const btn = document.createElement("button");
-      btn.textContent = group.name || "Group";
-      btn.addEventListener("click", () => openGroup(groupId, group.name));
-      list.appendChild(btn);
+      const group = result.val();
+      const button = document.createElement("button");
+      button.textContent = group.name || "Group";
+      button.addEventListener("click", () => openGroup(id, group.name));
+      list.appendChild(button);
     }
   });
 }
 
-async function openGroup(groupId, name) {
-  currentGroupId = groupId;
-  currentChatId = null;
-  $("activeGroup")?.classList.remove("hidden");
-  $("groupTitle") && ($("groupTitle").textContent = name || "Group");
-  openPage("groups");
-  clearMessageListener();
+function openGroup(id, name) {
+  groupId = id;
+  chatId = null;
 
-  const unsubscribe = onValue(
-    query(ref(db, `groups/${groupId}/messages`), limitToLast(100)),
-    snapshot => {
-      const box = $("groupMessages");
-      if (!box) return;
-      box.innerHTML = "";
-      snapshot.forEach(child => {
-        const msg = child.val();
-        const row = document.createElement("div");
-        row.textContent = (msg.name || "User") + ": " + (msg.text || "");
-        box.appendChild(row);
-      });
-      box.scrollTop = box.scrollHeight;
-    }
-  );
-  messageUnsubscribe = unsubscribe;
+  $("activeGroup")?.classList.remove("hidden");
+  $("activeChat")?.classList.add("hidden");
+  $("groupTitle") && ($("groupTitle").textContent = name || "Group");
+
+  displayMessages(`groups/${id}/messages`, "groupMessages");
+  showPage("groups");
 }
 
 $("sendGroupMessage")?.addEventListener("click", async () => {
   const text = $("groupMessageInput")?.value.trim();
-  if (!text || !currentGroupId) return;
+  if (!text || !groupId) return;
 
   try {
-    await push(ref(db, `groups/${currentGroupId}/messages`), {
-      uid: currentUser.uid,
-      name: currentUser.displayName || "User",
+    await push(ref(db, `groups/${groupId}/messages`), {
+      uid: user.uid,
+      name: user.displayName || "User",
       text,
       createdAt: Date.now()
     });
+
     $("groupMessageInput").value = "";
   } catch (error) {
-    showToast(error.message);
+    toast(error.message);
   }
 });
 
-// BACK BUTTONS / BASIC PLACEHOLDERS
-$("recordBtn")?.addEventListener("click", () =>
-  showToast("Voice messages کا کوڈ اگلے مرحلے میں شامل ہوگا")
-);
-$("attachBtn")?.addEventListener("click", () =>
-  $("mediaPicker")?.click()
-);
-$("voiceCallBtn")?.addEventListener("click", () =>
-  showToast("Voice calling اگلے مرحلے میں webrtc.js سے جوڑی جائے گی")
-);
-$("videoCallBtn")?.addEventListener("click", () =>
-  showToast("Video calling اگلے مرحلے میں webrtc.js سے جوڑی جائے گی")
-);
-$("startRecording")?.addEventListener("click", () =>
-  showToast("Voice recording اگلے مرحلے میں شامل ہوگی")
-);
-$("stopRecording")?.addEventListener("click", () =>
-  showToast("Recording ابھی فعال نہیں")
-);
-$("savePrivacy")?.addEventListener("click", () =>
-  showToast("Privacy settings محفوظ کرنے کا اگلا مرحلہ باقی ہے")
-);
-$("saveChatSettings")?.addEventListener("click", () =>
-  showToast("Chat settings محفوظ کرنے کا اگلا مرحلہ باقی ہے")
-);
+// VOICE / VIDEO CALLS
+$("voiceCallBtn")?.addEventListener("click", async () => {
+  if (!friendUid) return toast("پہلے Friend کی Chat کھولیں");
 
-$("incomingAccept")?.addEventListener("click", () =>
-  showToast("Calling ابھی setup نہیں ہوئی")
-);
-$("incomingReject")?.addEventListener("click", () =>
-  $("incomingCallBox")?.classList.add("hidden")
-);
+  try {
+    await startCall(friendUid, friendName, "voice");
+  } catch (error) {
+    toast("Voice call: " + error.message);
+  }
+});
 
-$("acceptVoiceCall")?.addEventListener("click", () =>
-  showToast("Voice calling ابھی setup نہیں ہوئی")
-);
-$("rejectVoiceCall")?.addEventListener("click", () =>
-  openPage("calls")
-);
-$("endVoiceCall")?.addEventListener("click", () =>
-  openPage("calls")
-);
-$("acceptVideoCall")?.addEventListener("click", () =>
-  showToast("Video calling ابھی setup نہیں ہوئی")
-);
-$("rejectVideoCall")?.addEventListener("click", () =>
-  openPage("calls")
-);
-$("endVideoCall")?.addEventListener("click", () =>
-  openPage("calls")
-);
+$("videoCallBtn")?.addEventListener("click", async () => {
+  if (!friendUid) return toast("پہلے Friend کی Chat کھولیں");
+
+  try {
+    await startCall(friendUid, friendName, "video");
+  } catch (error) {
+    toast("Video call: " + error.message);
+  }
+});
+
+$("incomingAccept")?.addEventListener("click", async () => {
+  try {
+    await acceptCall();
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
+$("incomingReject")?.addEventListener("click", rejectCall);
+$("acceptVoiceCall")?.addEventListener("click", acceptCall);
+$("acceptVideoCall")?.addEventListener("click", acceptCall);
+$("rejectVoiceCall")?.addEventListener("click", rejectCall);
+$("rejectVideoCall")?.addEventListener("click", rejectCall);
+$("endVoiceCall")?.addEventListener("click", endCall);
+$("endVideoCall")?.addEventListener("click", endCall);
+$("muteVoiceCall")?.addEventListener("click", toggleMute);
+$("muteVideoCall")?.addEventListener("click", toggleMute);
+$("cameraToggle")?.addEventListener("click", toggleCamera);
+
+// VOICE RECORDING PREVIEW
+$("startRecording")?.addEventListener("click", async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    recording = new MediaRecorder(stream);
+
+    recording.ondataavailable = event => {
+      if (event.data.size) recordedChunks.push(event.data);
+    };
+
+    recording.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: "audio/webm" });
+
+      if (localAudioUrl) URL.revokeObjectURL(localAudioUrl);
+      localAudioUrl = URL.createObjectURL(blob);
+
+      const preview = $("voicePreview");
+      if (preview) {
+        preview.src = localAudioUrl;
+        preview.controls = true;
+      }
+
+      stream.getTracks().forEach(track => track.stop());
+      if ($("recordStatus")) $("recordStatus").textContent =
+        "Recording preview ready";
+    };
+
+    recording.start();
+    if ($("recordStatus")) $("recordStatus").textContent = "Recording...";
+    toast("Recording started");
+  } catch (error) {
+    toast("Microphone permission: " + error.message);
+  }
+});
+
+$("stopRecording")?.addEventListener("click", () => {
+  if (recording && recording.state !== "inactive") {
+    recording.stop();
+  }
+});
+
+$("recordBtn")?.addEventListener("click", () => {
+  showPage("voice");
+});
+
+// MEDIA PICKER PREVIEW
+$("attachBtn")?.addEventListener("click", () => $("mediaPicker")?.click());
+
+$("mediaPicker")?.addEventListener("change", () => {
+  const file = $("mediaPicker").files?.[0];
+  if (!file) return;
+
+  const preview = $("mediaPreview");
+  if (!preview) return;
+
+  preview.textContent = file.name;
+  toast("File selected. Upload storage is not connected yet.");
+});
+
+$("mediaLibraryPicker")?.addEventListener("change", () => {
+  const file = $("mediaLibraryPicker").files?.[0];
+  if (file && $("mediaLibrary")) {
+    $("mediaLibrary").textContent = file.name;
+  }
+});
+
+// BLOCKED USERS
+function loadBlocked() {
+  onValue(ref(db, `blocked/${user.uid}`), snapshot => {
+    const list = $("blockedList") || $("blockedContacts");
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    if (!snapshot.exists()) {
+      list.textContent = "No blocked users";
+      return;
+    }
+
+    snapshot.forEach(item => {
+      const row = document.createElement("div");
+      row.textContent = item.key;
+
+      const unblock = document.createElement("button");
+      unblock.textContent = "Unblock";
+      unblock.addEventListener("click", () =>
+        remove(ref(db, `blocked/${user.uid}/${item.key}`))
+          .then(() => toast("User unblocked"))
+          .catch(error => toast(error.message))
+      );
+
+      row.appendChild(unblock);
+      list.appendChild(row);
+    });
+  });
+}
+
+// PRIVACY SETTINGS
+$("savePrivacy")?.addEventListener("click", async () => {
+  try {
+    await set(ref(db, `userSettings/${user.uid}/privacy`), {
+      showOnline: $("showOnline")?.checked ?? true,
+      showProfile: $("showProfile")?.checked ?? true,
+      allowRequests: $("allowRequests")?.checked ?? true,
+      readReceipts: $("readReceipts")?.checked ?? true
+    });
+
+    toast("Privacy settings saved");
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
+// CHAT SETTINGS
+$("saveChatSettings")?.addEventListener("click", async () => {
+  try {
+    await set(ref(db, `userSettings/${user.uid}/chat`), {
+      enterToSend: $("enterToSend")?.checked ?? true,
+      messagePreview: $("messagePreview")?.checked ?? true
+    });
+
+    toast("Chat settings saved");
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
+// LOAD SETTINGS
+async function loadProfileSettings() {
+  try {
+    const result = await get(ref(db, `userSettings/${user.uid}`));
+    if (!result.exists()) return;
+
+    const data = result.val();
+
+    if (data.privacy) {
+      for (const [key, value] of Object.entries(data.privacy)) {
+        if ($(key)) $(key).checked = !!value;
+      }
+    }
+
+    if (data.chat) {
+      for (const [key, value] of Object.entries(data.chat)) {
+        if ($(key)) $(key).checked = !!value;
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// LOCAL CHAT LOCK - NOT ENCRYPTION
+$("enableChatLock")?.addEventListener("change", () => {
+  $("chatLockPin")?.classList.toggle(
+    "hidden",
+    !$("enableChatLock").checked
+  );
+});
+
+$("unlockChat")?.addEventListener("click", () => {
+  const pin = $("chatLockPin")?.value;
+  if (!pin || pin.length < 4) return toast("کم از کم 4 ہندسوں کا PIN درج کریں");
+
+  sessionStorage.setItem("sdChatPinSet", "yes");
+  toast("Local PIN option saved for this session");
+});
+
+// ACCOUNT
+$("changePassword")?.addEventListener("click", () => {
+  toast("Password change کے لیے Forgot Password استعمال کریں");
+});
+
+$("deleteAccount")?.addEventListener("click", () => {
+  toast("Account deletion کو محفوظ طریقے سے الگ مرحلے میں بنانا ہوگا");
+});
+
+// STORAGE
+$("clearLocalMedia")?.addEventListener("click", () => {
+  if (localAudioUrl) URL.revokeObjectURL(localAudioUrl);
+  localAudioUrl = null;
+
+  if ($("voicePreview")) $("voicePreview").removeAttribute("src");
+  if ($("storageInfo")) $("storageInfo").textContent = "Local preview cleared";
+
+  toast("Local preview cleared");
+});
 
 console.log("SD DOST CHAT app.js loaded");
