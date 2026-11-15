@@ -1,90 +1,515 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#142d50">
 <title>SD DOST CHAT</title>
+
 <style>
-:root{--navy:#142d50;--navy2:#203f68;--bg:#eef1f5;--white:#fff;--line:#dce2ea;--muted:#6b7280;--blue:#315b8b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:#172033}
-button,input{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:12px 15px;background:var(--navy);color:white;font-weight:700}
-button.secondary{background:#e8edf4;color:var(--navy)}button.ghost{background:transparent;color:var(--navy);border:1px solid var(--line)}
-input{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;margin:6px 0 12px;background:white}
-header{background:var(--navy);color:white;padding:17px 18px;display:flex;justify-content:space-between;align-items:center}
-header strong{font-size:18px}header small{opacity:.8}
-main{max-width:760px;margin:auto;padding:16px 14px 95px}
-.panel{background:white;border:1px solid var(--line);border-radius:18px;padding:17px;margin:12px 0;box-shadow:0 3px 12px #142d500b}
-h2{font-size:20px;margin:0 0 14px;color:var(--navy)}h3{font-size:16px;margin:0 0 8px}
-.muted{color:var(--muted);font-size:13px;line-height:1.5}.hidden{display:none!important}
-.row{display:flex;gap:9px;align-items:center}.row>*{min-width:0}.row input{flex:1}
-.auth{max-width:440px;margin:35px auto;padding:22px}
-.tabs{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:7px 3px calc(7px + env(safe-area-inset-bottom));z-index:5}
-.tabs button{background:transparent;color:#64748b;border-radius:10px;padding:7px 2px;font-size:11px}
-.tabs button.active{color:var(--navy);background:#edf2f8}
+:root{
+ --navy:#142d50;
+ --navy2:#203f68;
+ --blue:#315b8b;
+ --bg:#eef1f5;
+ --white:#fff;
+ --line:#dce2ea;
+ --muted:#6b7280;
+ --danger:#b42318;
+}
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:var(--bg);
+ color:#172033;
+ font-family:Arial,sans-serif;
+}
+button,input,textarea,select{font:inherit}
+button{
+ cursor:pointer;
+ border:0;
+ border-radius:10px;
+ padding:11px 14px;
+ background:var(--navy);
+ color:white;
+ font-weight:700;
+}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,textarea,select{
+ width:100%;
+ padding:12px;
+ border:1px solid var(--line);
+ border-radius:10px;
+ margin:6px 0 12px;
+ background:white;
+}
+textarea{resize:vertical}
+label{font-size:13px;font-weight:bold}
+header{
+ background:var(--navy);
+ color:white;
+ padding:15px;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ position:sticky;
+ top:0;
+ z-index:10;
+}
+header strong{font-size:19px}
+header small{opacity:.8}
+main{
+ max-width:850px;
+ margin:auto;
+ padding:14px 12px 100px;
+}
+.panel{
+ background:white;
+ border:1px solid var(--line);
+ border-radius:16px;
+ padding:16px;
+ margin:12px 0;
+ box-shadow:0 3px 12px #142d500b;
+}
+h2{font-size:20px;color:var(--navy);margin:0 0 14px}
+h3{font-size:16px;margin:0 0 10px}
+p{line-height:1.5}
+.muted{color:var(--muted);font-size:13px}
+.hidden{display:none!important}
+.page{display:none}
+.page.active{display:block}
+.row{display:flex;align-items:center;gap:8px}
+.row>*{min-width:0}
+.row input{flex:1}
+.secondary{background:#e8edf4;color:var(--navy)}
+.danger{background:var(--danger)}
+.ghost{background:transparent;color:var(--navy);border:1px solid var(--line)}
+.full{width:100%}
+.auth{
+ max-width:440px;
+ margin:35px auto;
+ padding:22px;
+}
+.avatar{
+ width:48px;height:48px;
+ border-radius:50%;
+ display:grid;place-items:center;
+ background:#e6edf6;color:var(--navy);
+ font-weight:bold;font-size:20px;
+}
+.item{
+ padding:13px 0;
+ border-bottom:1px solid var(--line);
+}
+.item:last-child{border:0}
+.list{display:flex;flex-direction:column;gap:8px}
+.list-item{
+ display:flex;align-items:center;gap:10px;
+ padding:12px;
+ background:#f7f9fc;
+ border-radius:12px;
+}
+.list-item .grow{flex:1}
+.chatbox{
+ height:42vh;
+ min-height:220px;
+ overflow:auto;
+ background:#f7f9fc;
+ border-radius:12px;
+ padding:12px;
+ margin:12px 0;
+}
+.bubble{
+ padding:10px 13px;
+ border-radius:14px;
+ margin:8px 0;
+ max-width:85%;
+ width:max-content;
+ overflow-wrap:anywhere;
+}
+.sent{background:#dceafa;margin-left:auto}
+.received{background:#e9edf2}
+.tabs{
+ position:fixed;
+ bottom:0;left:0;right:0;
+ background:white;
+ border-top:1px solid var(--line);
+ display:grid;
+ grid-template-columns:repeat(5,1fr);
+ padding:7px 3px;
+ padding-bottom:calc(7px + env(safe-area-inset-bottom));
+ z-index:20;
+}
+.tabs button{
+ background:transparent;
+ color:#64748b;
+ padding:7px 2px;
+ font-size:11px;
+}
+.tabs button.active{
+ background:#edf2f8;
+ color:var(--navy);
+}
 .tabs span{display:block;font-size:19px;margin-bottom:3px}
-.item{padding:13px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
-.pill{display:inline-block;background:#edf2f8;color:var(--navy);border-radius:20px;padding:5px 9px;font-size:12px}
-.chatbox{height:45vh;overflow:auto;background:#f7f9fc;border-radius:14px;padding:12px;margin:10px 0}
-.bubble{background:#e5edf7;padding:10px 12px;border-radius:14px;margin:7px 0;max-width:85%;width:max-content}
-.notice{background:#fff7e6;border:1px solid #f0dca8;padding:11px;border-radius:12px;color:#73551b;font-size:13px;line-height:1.5}
-.avatar{width:54px;height:54px;border-radius:50%;background:#e6edf6;color:var(--navy);display:grid;place-items:center;font-size:23px;font-weight:bold}
-@media(min-width:650px){main{padding-top:25px}.tabs{max-width:760px;margin:auto;border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0}}
+.notice{
+ padding:11px;
+ border-radius:10px;
+ background:#fff7e6;
+ color:#73551b;
+ font-size:13px;
+}
+.status{font-size:12px;color:var(--muted)}
+.media-preview img,.media-preview video{
+ max-width:100%;max-height:240px;border-radius:12px;
+}
+#toast{
+ position:fixed;
+ bottom:85px;left:50%;
+ transform:translateX(-50%);
+ background:#172033;color:white;
+ padding:12px 18px;border-radius:12px;
+ z-index:50;
+ display:none;
+ max-width:90%;
+}
+#toast.show{display:block}
+@media(min-width:650px){
+ main{padding-top:24px}
+ .tabs{
+ max-width:850px;margin:auto;
+ border:1px solid var(--line);
+ border-bottom:0;
+ border-radius:15px 15px 0 0;
+ }
+}
 </style>
 </head>
+
 <body>
-<header><div><strong>SD DOST CHAT</strong><br><small>Stay connected with friends</small></div><span id="headerUser" class="muted" style="color:#fff"></span></header>
 
+<header>
+ <div>
+  <strong>SD DOST CHAT</strong><br>
+  <small>Stay connected with friends</small>
+ </div>
+ <span id="headerUser"></span>
+</header>
+
+<!-- AUTHENTICATION -->
 <section id="authScreen" class="panel auth">
-  <h2 id="authTitle">Welcome to SD DOST CHAT</h2>
-  <p class="muted">Create your account or log in to continue.</p>
-  <div id="nameWrap"><label>Your name</label><input id="name" placeholder="Enter your name"></div>
-  <label>Email</label><input id="email" type="email" placeholder="you@example.com" autocomplete="email">
-  <label>Password</label><input id="password" type="password" placeholder="At least 6 characters" autocomplete="current-password">
-  <button id="authBtn" style="width:100%">Create account</button>
-  <button id="switchAuth" class="secondary" style="width:100%;margin-top:9px">I already have an account</button>
-  <button id="forgotBtn" class="ghost" style="width:100%;margin-top:9px">Forgot password?</button>
-  <p id="authMsg" class="muted" aria-live="polite"></p>
+ <h2 id="authTitle">Welcome to SD DOST CHAT</h2>
+ <p class="muted">Create your account or log in.</p>
+
+ <div id="nameWrap">
+  <label>Your name</label>
+  <input id="name" placeholder="Enter your name">
+ </div>
+
+ <label>Email</label>
+ <input id="email" type="email" placeholder="Email address">
+
+ <label>Password</label>
+ <input id="password" type="password" placeholder="At least 6 characters">
+
+ <button id="authBtn" class="full">Create account</button>
+ <button id="switchAuth" class="secondary full" style="margin-top:8px">
+  I already have an account
+ </button>
+ <button id="forgotBtn" class="ghost full" style="margin-top:8px">
+  Forgot password?
+ </button>
+ <p id="authMsg" class="muted"></p>
 </section>
 
+<!-- MAIN APPLICATION -->
 <div id="appScreen" class="hidden">
+
 <main>
-<section id="page-chats" class="page">
-  <div class="panel"><h2>Chats</h2><p class="muted">Your private conversations will appear here.</p><div id="chatList"><p class="muted">No conversations yet. Add a friend to get started.</p></div></div>
-  <div class="panel hidden" id="activeChat">
-    <div class="row"><button class="secondary" id="backChats">← Back</button><h3 id="chatTitle">Chat</h3></div>
-    <div id="messages" class="chatbox"></div>
-    <div class="row"><input id="messageInput" placeholder="Write a message"><button id="sendMessage">Send</button></div>
-    <div class="row"><button class="secondary" id="recordBtn">🎙 Record voice</button><button class="secondary" id="attachBtn">＋ Photo/video</button></div>
-    <p id="chatNotice" class="muted">Media sharing requires a storage service to be connected.</p>
+
+<!-- CHATS -->
+<section id="page-chats" class="page active">
+ <div class="panel">
+  <h2>Messages</h2>
+  <input id="chatSearch" placeholder="Search conversations">
+  <div id="chatList" class="list">
+   <p class="muted">Your conversations will appear here.</p>
   </div>
+ </div>
+
+ <div id="activeChat" class="panel hidden">
+  <div class="row">
+   <button id="backChats" class="secondary">← Back</button>
+   <h3 id="chatTitle">Private Chat</h3>
+  </div>
+
+  <div class="row">
+   <button id="voiceCallBtn" class="secondary">📞 Voice Call</button>
+   <button id="videoCallBtn" class="secondary">🎥 Video Call</button>
+   <button id="lockChatBtn" class="secondary">🔒 Lock</button>
+  </div>
+
+  <div id="messages" class="chatbox"></div>
+
+  <div class="row">
+   <input id="messageInput" placeholder="Write a message">
+   <button id="sendMessage">Send</button>
+  </div>
+
+  <div class="row">
+   <button id="recordBtn" class="secondary">🎙 Voice Message</button>
+   <button id="attachBtn" class="secondary">＋ Media</button>
+  </div>
+
+  <input id="mediaPicker" type="file" accept="image/*,video/*" class="hidden">
+  <div id="mediaPreview" class="media-preview"></div>
+  <p id="chatNotice" class="muted"></p>
+ </div>
 </section>
 
-<section id="page-friends" class="page hidden">
- <div class="panel"><h2>Friends</h2><label>Find friend by UID</label><div class="row"><input id="friendUid" placeholder="Enter friend's UID"><button id="addFriend">Add</button></div><p class="muted">Friend search and requests will be connected to the secure database rules in the next setup step.</p><div id="friendsList"></div></div>
+<!-- FRIENDS -->
+<section id="page-friends" class="page">
+ <div class="panel">
+  <h2>Friends</h2>
+  <label>Friend UID</label>
+  <div class="row">
+   <input id="friendUid" placeholder="Enter friend's UID">
+   <button id="addFriend">Add</button>
+  </div>
+  <p id="friendFeedback" class="muted"></p>
+  <div id="friendsList" class="list"></div>
+ </div>
 </section>
 
-<section id="page-requests" class="page hidden">
- <div class="panel"><h2>Friend Requests</h2><div id="requestsList"><p class="muted">No requests to show.</p></div></div>
+<!-- REQUESTS -->
+<section id="page-requests" class="page">
+ <div class="panel">
+  <h2>Friend Requests</h2>
+  <div id="requestsList" class="list"></div>
+ </div>
 </section>
 
-<section id="page-profile" class="page hidden">
- <div class="panel"><h2>Profile</h2><div class="row"><div class="avatar" id="avatar">S</div><div><h3 id="profileName">Your profile</h3><p class="muted" id="profileEmail"></p></div></div><div class="item"><b>Your UID</b><p class="muted" id="profileUid" style="overflow-wrap:anywhere"></p><button class="secondary" id="copyUid">Copy UID</button></div></div>
+<!-- GROUPS -->
+<section id="page-groups" class="page">
+ <div class="panel">
+  <h2>Group Chats</h2>
+  <label>Group name</label>
+  <input id="groupName" placeholder="Enter group name">
+  <label>Member UIDs (comma separated)</label>
+  <textarea id="groupMembers" placeholder="Enter member UIDs"></textarea>
+  <button id="createGroup">Create Group</button>
+  <p id="groupFeedback" class="muted"></p>
+  <div id="groupList" class="list"></div>
+ </div>
+
+ <div id="activeGroup" class="panel hidden">
+  <h3 id="groupTitle">Group</h3>
+  <div id="groupMessages" class="chatbox"></div>
+  <div class="row">
+   <input id="groupMessageInput" placeholder="Group message">
+   <button id="sendGroupMessage">Send</button>
+  </div>
+ </div>
 </section>
 
-<section id="page-settings" class="page hidden">
- <div class="panel"><h2>Settings</h2><div class="item"><b>Account</b><p class="muted">Signed-in account and security</p></div><div class="item"><b>Notifications</b><p class="muted">Notification setup will be added after deployment configuration.</p></div><div class="item"><b>Privacy & Chat Lock</b><p class="muted">Secure chat-lock controls are not enabled yet.</p></div><div class="item"><b>Calls</b><p class="muted">Voice and video calling require WebRTC signaling and a secure call service.</p><button class="secondary" disabled>Voice call — setup required</button> <button class="secondary" disabled>Video call — setup required</button></div><button id="logout" style="background:#9b2c2c">Log out</button></div>
+<!-- CALLS -->
+<section id="page-calls" class="page">
+ <div class="panel">
+  <h2>Calls</h2>
+  <div id="callHistory" class="list"></div>
+ </div>
 </section>
+
+<!-- VOICE CALL -->
+<section id="page-voice-call" class="page">
+ <div class="panel">
+  <h2>Voice Call</h2>
+  <p id="voiceCallName">No active call</p>
+  <p id="voiceCallStatus" class="status">Waiting</p>
+  <audio id="remoteAudio" autoplay></audio>
+  <button id="acceptVoiceCall">Accept</button>
+  <button id="rejectVoiceCall" class="danger">Reject</button>
+  <button id="endVoiceCall" class="danger">End Call</button>
+  <button id="muteVoiceCall" class="secondary">Mute</button>
+ </div>
+</section>
+
+<!-- VIDEO CALL -->
+<section id="page-video-call" class="page">
+ <div class="panel">
+  <h2>Video Call</h2>
+  <video id="localVideo" autoplay muted playsinline style="width:100%;max-height:250px;background:#111;border-radius:12px"></video>
+  <video id="remoteVideo" autoplay playsinline style="width:100%;max-height:250px;background:#111;border-radius:12px"></video>
+  <p id="videoCallStatus" class="status">Waiting</p>
+  <button id="acceptVideoCall">Accept</button>
+  <button id="rejectVideoCall" class="danger">Reject</button>
+  <button id="endVideoCall" class="danger">End Call</button>
+  <button id="muteVideoCall" class="secondary">Mute</button>
+  <button id="cameraToggle" class="secondary">Camera</button>
+ </div>
+</section>
+
+<!-- VOICE MESSAGES -->
+<section id="page-voice" class="page">
+ <div class="panel">
+  <h2>Voice Messages</h2>
+  <button id="startRecording">Start Recording</button>
+  <button id="stopRecording" class="danger">Stop Recording</button>
+  <p id="recordStatus" class="status"></p>
+  <audio id="voicePreview" controls></audio>
+ </div>
+</section>
+
+<!-- MEDIA -->
+<section id="page-media" class="page">
+ <div class="panel">
+  <h2>Photos & Videos</h2>
+  <input id="mediaLibraryPicker" type="file" accept="image/*,video/*">
+  <div id="mediaLibrary" class="media-preview"></div>
+ </div>
+</section>
+
+<!-- PROFILE -->
+<section id="page-profile" class="page">
+ <div class="panel">
+  <h2>My Profile</h2>
+  <div class="row">
+   <div id="avatar" class="avatar">SD</div>
+   <div>
+    <h3 id="profileName">Your Name</h3>
+    <p id="profileEmail" class="muted"></p>
+   </div>
+  </div>
+
+  <label>Change name</label>
+  <input id="editProfileName" placeholder="Your name">
+  <label>Profile photo</label>
+  <input id="profilePhoto" type="file" accept="image/*">
+  <button id="saveProfile">Save Profile</button>
+
+  <div class="item">
+   <b>Your UID</b>
+   <p id="profileUid" class="muted" style="overflow-wrap:anywhere"></p>
+   <button id="copyUid" class="secondary">Copy UID</button>
+  </div>
+ </div>
+</section>
+
+<!-- SETTINGS -->
+<section id="page-settings" class="page">
+ <div class="panel">
+  <h2>Settings</h2>
+  <button class="full" data-page="account-settings">Account Settings</button>
+  <button class="full secondary" data-page="privacy">Privacy</button>
+  <button class="full secondary" data-page="security">Security</button>
+  <button class="full secondary" data-page="notifications">Notifications</button>
+  <button class="full secondary" data-page="chat-settings">Chat Settings</button>
+  <button class="full secondary" data-page="storage">Storage & Media</button>
+  <button id="logout" class="danger full">Log out</button>
+ </div>
+</section>
+
+<!-- ACCOUNT SETTINGS -->
+<section id="page-account-settings" class="page">
+ <div class="panel">
+  <h2>Account Settings</h2>
+  <p id="accountEmail" class="muted"></p>
+  <button id="changePassword">Reset Password</button>
+  <button id="deleteAccount" class="danger">Delete Account</button>
+  <p id="accountFeedback" class="muted"></p>
+ </div>
+</section>
+
+<!-- PRIVACY -->
+<section id="page-privacy" class="page">
+ <div class="panel">
+  <h2>Privacy Settings</h2>
+  <label><input id="showOnline" type="checkbox"> Show online status</label>
+  <label><input id="showProfile" type="checkbox"> Allow profile viewing</label>
+  <label><input id="allowRequests" type="checkbox"> Allow friend requests</label>
+  <label><input id="readReceipts" type="checkbox"> Read receipts</label>
+  <button id="savePrivacy">Save Privacy</button>
+  <p id="privacyFeedback" class="muted"></p>
+ </div>
+</section>
+
+<!-- SECURITY -->
+<section id="page-security" class="page">
+ <div class="panel">
+  <h2>Security</h2>
+  <button id="enableChatLock">Set Chat Lock PIN</button>
+  <input id="chatLockPin" type="password" placeholder="Enter PIN">
+  <button id="unlockChat">Unlock Chat</button>
+  <p id="securityFeedback" class="muted"></p>
+ </div>
+ <div class="panel">
+  <h3>Blocked Contacts</h3>
+  <div id="blockedList"></div>
+ </div>
+</section>
+
+<!-- BLOCKED -->
+<section id="page-blocked" class="page">
+ <div class="panel">
+  <h2>Blocked Contacts</h2>
+  <div id="blockedContacts"></div>
+ </div>
+</section>
+
+<!-- NOTIFICATIONS -->
+<section id="page-notifications" class="page">
+ <div class="panel">
+  <h2>Notifications</h2>
+  <button id="enableNotifications">Enable Notifications</button>
+  <p id="notificationStatus" class="muted"></p>
+ </div>
+</section>
+
+<!-- CHAT SETTINGS -->
+<section id="page-chat-settings" class="page">
+ <div class="panel">
+  <h2>Chat Settings</h2>
+  <label><input id="enterToSend" type="checkbox"> Enter to send messages</label>
+  <label><input id="messagePreview" type="checkbox"> Message previews</label>
+  <button id="saveChatSettings">Save Settings</button>
+  <p id="chatSettingsFeedback" class="muted"></p>
+ </div>
+</section>
+
+<!-- STORAGE -->
+<section id="page-storage" class="page">
+ <div class="panel">
+  <h2>Media & Storage</h2>
+  <div id="storageInfo"></div>
+  <button id="clearLocalMedia" class="danger">Clear Local Preview</button>
+ </div>
+</section>
+
 </main>
+
+<!-- NAVIGATION -->
 <nav class="tabs hidden" id="tabs">
  <button class="active" data-page="chats"><span>💬</span>Chats</button>
  <button data-page="friends"><span>👥</span>Friends</button>
  <button data-page="requests"><span>📩</span>Requests</button>
- <button data-page="profile"><span>👤</span>Profile</button>
+ <button data-page="groups"><span>👨‍👩‍👧</span>Groups</button>
  <button data-page="settings"><span>⚙️</span>Settings</button>
 </nav>
+
 </div>
-  
+
+<!-- INCOMING CALL -->
+<div id="incomingCallBox" class="panel hidden"
+ style="position:fixed;left:5%;right:5%;top:25%;z-index:40;max-width:450px;margin:auto">
+ <h2>Incoming Call</h2>
+ <p id="incomingCaller">Someone is calling...</p>
+ <button id="incomingAccept">Accept</button>
+ <button id="incomingReject" class="danger">Reject</button>
+</div>
+
+<div id="toast"></div>
+
 <script type="module" src="app.js"></script>
+
 </body>
 </html>
